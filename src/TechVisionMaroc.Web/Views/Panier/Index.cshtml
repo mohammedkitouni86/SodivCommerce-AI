@@ -1,0 +1,141 @@
+@model TechVisionMaroc.Models.Panier
+@inject IPrixService Prix
+@{
+    ViewData["Title"] = "Mon Panier";
+    decimal totalHt = 0m, totalTva = 0m, totalTtc = 0m;
+    foreach (var l in Model.Lignes)
+    {
+        var pu = (l.Produit?.PrixPromo ?? l.Produit?.Prix ?? 0m);
+        var taux = l.Produit?.TauxTVA ?? 20m;
+        var st = pu * l.Quantite;
+        var ht = Prix.Ht(st, taux);
+        totalHt  += ht;
+        totalTva += st - ht;
+        totalTtc += st;
+    }
+    var fraisLivraison = totalTtc >= 500 ? 0m : 30m;
+    var grandTotal = totalTtc + fraisLivraison;
+}
+
+<div class="container py-5">
+    <h2 class="fw-bold mb-4"><i class="fas fa-shopping-cart me-2 text-primary"></i>Mon Panier</h2>
+
+    @if (!Model.Lignes.Any())
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-cart-arrow-down fa-5x text-muted mb-4"></i>
+            <h4>Votre panier est vide</h4>
+            <p class="text-muted mb-4">Découvrez nos produits et ajoutez-les à votre panier</p>
+            <a href="/Catalogue" class="btn btn-primary btn-lg">
+                <i class="fas fa-shopping-bag me-2"></i>Continuer les achats
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-0">
+                        @foreach (var ligne in Model.Lignes)
+                        {
+                            <div class="d-flex align-items-center gap-3 p-3 border-bottom">
+                                <img src="@(string.IsNullOrEmpty(ligne.Produit?.ImageUrl) ? "/images/placeholder.svg" : ligne.Produit.ImageUrl)"
+                                     style="width:80px;height:80px;object-fit:contain" class="rounded" alt="@ligne.Produit?.Nom" />
+                                <div class="flex-grow-1">
+                                    <h6 class="fw-semibold mb-1">
+                                        <a href="/Produit/Details/@ligne.ProduitId" class="text-dark text-decoration-none">
+                                            @ligne.Produit?.Nom
+                                        </a>
+                                    </h6>
+                                    <small class="text-muted">@ligne.Produit?.Marque</small>
+                                    <div class="fw-bold text-primary mt-1">
+                                        @Prix.Format(ligne.Produit?.PrixPromo ?? ligne.Produit?.Prix ?? 0, ligne.Produit?.TauxTVA ?? 20m)
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <form asp-controller="Panier" asp-action="ModifierQuantite" method="post" class="d-flex align-items-center gap-1">
+                                        <input type="hidden" name="ligneId" value="@ligne.Id" />
+                                        <button type="submit" name="quantite" value="@(ligne.Quantite - 1)"
+                                                class="btn btn-outline-secondary btn-sm">−</button>
+                                        <span class="px-3 fw-semibold">@ligne.Quantite</span>
+                                        <button type="submit" name="quantite" value="@(ligne.Quantite + 1)"
+                                                class="btn btn-outline-secondary btn-sm">+</button>
+                                    </form>
+                                    <form asp-controller="Panier" asp-action="Supprimer" method="post">
+                                        <input type="hidden" name="ligneId" value="@ligne.Id" />
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="fw-bold text-end" style="min-width:120px">
+                                    @Prix.Format(ligne.SousTotal, ligne.Produit?.TauxTVA ?? 20m)
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <a href="/Catalogue" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Continuer les achats
+                    </a>
+                </div>
+            </div>
+
+            <!-- Récapitulatif -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-primary text-white fw-semibold">
+                        <i class="fas fa-receipt me-2"></i>Récapitulatif
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Sous-total (@Model.NombreArticles articles)</span>
+                            <span class="fw-semibold">@totalTtc.ToString("N2") MAD</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 text-muted small">
+                            <span>Dont TVA</span>
+                            <span>@totalTva.ToString("N2") MAD</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Frais de livraison</span>
+                            @if (fraisLivraison == 0)
+                            {
+                                <span class="text-success fw-semibold">Gratuit</span>
+                            }
+                            else
+                            {
+                                <span>@fraisLivraison.ToString("N2") MAD</span>
+                            }
+                        </div>
+                        @if (totalTtc < 500 && totalTtc > 0)
+                        {
+                            <div class="alert alert-info small py-2">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Plus que @((500 - totalTtc).ToString("N2")) MAD pour la livraison gratuite !
+                            </div>
+                        }
+                        <hr />
+                        <div class="d-flex justify-content-between fw-bold fs-5">
+                            <span>Total à payer</span>
+                            <span class="text-primary">@grandTotal.ToString("N2") MAD</span>
+                        </div>
+                        <a href="/Panier/Commande" class="btn btn-success w-100 mt-3 btn-lg fw-semibold">
+                            <i class="fas fa-lock me-2"></i>Passer la commande
+                        </a>
+                        <div class="text-center mt-3">
+                            <small class="text-muted"><i class="fas fa-shield-alt me-1"></i>Paiement 100% sécurisé</small>
+                        </div>
+                        <div class="d-flex justify-content-center gap-3 mt-2 text-muted">
+                            <i class="fab fa-stripe fa-lg"></i>
+                            <i class="fab fa-paypal fa-lg"></i>
+                            <i class="fas fa-credit-card fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

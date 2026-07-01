@@ -1,0 +1,79 @@
+@{
+    ViewData["Title"] = "Créer un administrateur";
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="@ViewBag.AdminBase/admins" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-user-plus me-2 text-warning"></i>Créer un administrateur
+            </h4>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:560px">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <div class="alert alert-warning border-0 mb-4">
+                <i class="fas fa-crown me-2"></i>
+                Le nouvel admin aura accès à la gestion des produits, commandes et clients, mais <strong>pas</strong> aux paramètres Super Admin.
+            </div>
+
+            <form method="post" action="@ViewBag.AdminBase/admins/creer">
+                @Html.AntiForgeryToken()
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+                        <input type="text" name="prenom" class="form-control" required />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+                        <input type="text" name="nom" class="form-control" required />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                    <input type="email" name="email" class="form-control" required />
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Mot de passe <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="password" name="motDePasse" id="mdp" class="form-control" required minlength="8" />
+                        <button type="button" class="btn btn-outline-secondary" onclick="toggleMdp()">
+                            <i class="fas fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">Minimum 8 caractères.</div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-warning btn-lg fw-bold">
+                        <i class="fas fa-user-plus me-2"></i>Créer l'administrateur
+                    </button>
+                    <a href="@ViewBag.AdminBase/admins" class="btn btn-outline-secondary">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMdp() {
+    var input = document.getElementById('mdp');
+    var icon  = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>

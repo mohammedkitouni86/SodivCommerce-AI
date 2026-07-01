@@ -1,0 +1,214 @@
+@using TechVisionMaroc.Models
+@{
+    ViewData["Title"] = "Mes coupons";
+    var coupons = (List<Coupon>)ViewBag.Coupons;
+    var utilisations = (Dictionary<int,int>)ViewBag.UtilisationsParCoupon;
+    var historique = (List<UtilisationCoupon>)ViewBag.Historique;
+
+    string FormatValeur(Coupon c) => c.TypeReduction switch
+    {
+        TypeReduction.Pourcentage      => $"-{c.Valeur}%",
+        TypeReduction.Montant          => $"-{c.Valeur:N0} MAD",
+        TypeReduction.LivraisonGratuite => "🚚 GRATUIT",
+        _ => ""
+    };
+
+    string LibelleType(TypeCoupon t) => t switch
+    {
+        TypeCoupon.Bienvenue   => "Bienvenue",
+        TypeCoupon.Anniversaire => "Anniversaire",
+        TypeCoupon.Parrainage  => "Parrainage",
+        TypeCoupon.Fidelite    => "Fidélité",
+        TypeCoupon.Compensation => "Compensation",
+        _ => "Promo"
+    };
+}
+
+<div class="container py-5">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/Compte" class="text-decoration-none">Mon compte</a></li>
+            <li class="breadcrumb-item active">Coupons</li>
+        </ol>
+    </nav>
+
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1"><i class="fas fa-ticket-alt text-success me-2"></i>Mes coupons</h2>
+        <p class="text-muted">@coupons.Count coupon(s) disponible(s)</p>
+    </div>
+
+    @if (!coupons.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-ticket-alt fa-3x text-muted mb-3"></i>
+                <h5>Aucun coupon disponible</h5>
+                <p class="text-muted">Restez à l'écoute, des codes promo arrivent régulièrement !</p>
+                <a href="/Home/Newsletter" class="btn btn-primary">S'inscrire à la newsletter</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var c in coupons)
+            {
+                var utiliseCount = utilisations.GetValueOrDefault(c.Id, 0);
+                var epuiseClient = c.LimiteParClient.HasValue && utiliseCount >= c.LimiteParClient.Value;
+                var joursRestants = (c.DateFin - DateTime.UtcNow).Days;
+
+                <div class="col-md-6 col-lg-4">
+                    <div class="coupon-card @(epuiseClient ? "epuise" : "")">
+                        <div class="coupon-left">
+                            <div class="coupon-type-badge bg-warning text-dark">@LibelleType(c.Type)</div>
+                            <div class="coupon-value">@FormatValeur(c)</div>
+                        </div>
+                        <div class="coupon-right">
+                            <div class="fw-bold mb-1">@c.Libelle</div>
+                            @if (c.MontantMinimum.HasValue)
+                            {
+                                <small class="text-muted d-block">
+                                    <i class="fas fa-tag me-1"></i>Min. @c.MontantMinimum.Value.ToString("N0") MAD
+                                </small>
+                            }
+                            <small class="text-muted d-block">
+                                <i class="fas fa-calendar me-1"></i>
+                                @if (joursRestants <= 7)
+                                {
+                                    <span class="text-danger fw-bold">Expire dans @joursRestants j</span>
+                                }
+                                else
+                                {
+                                    <text>Jusqu'au @c.DateFin.ToString("dd/MM/yyyy")</text>
+                                }
+                            </small>
+                            <div class="coupon-code-box mt-2">
+                                <code>@c.Code</code>
+                                <button type="button" class="btn btn-sm btn-outline-primary copy-coupon" data-code="@c.Code"
+                                        title="Copier">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            @if (epuiseClient)
+                            {
+                                <small class="text-danger d-block mt-1"><i class="fas fa-times-circle me-1"></i>Déjà utilisé</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (historique.Any())
+    {
+        <div class="mt-5">
+            <h4 class="fw-bold mb-3"><i class="fas fa-history me-2"></i>Historique d'utilisation</h4>
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr><th>Code</th><th>Date</th><th class="text-end">Réduction</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in historique)
+                            {
+                                <tr>
+                                    <td><code>@u.Coupon?.Code</code></td>
+                                    <td><small>@u.DateUtilisation.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></td>
+                                    <td class="text-end fw-bold text-success">-@u.MontantReduction.ToString("N0") MAD</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+.coupon-card {
+    display: flex;
+    background: #fff;
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,.06));
+    height: 100%;
+    transition: all .25s ease;
+}
+.coupon-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.08)); }
+.coupon-card.epuise { opacity: .55; }
+
+.coupon-left {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    padding: 1rem .75rem;
+    min-width: 110px;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    position: relative;
+}
+.coupon-left::before, .coupon-left::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    width: 16px; height: 16px;
+    background: #fff;
+    border-radius: 50%;
+}
+.coupon-left::before { top: -8px; }
+.coupon-left::after  { bottom: -8px; }
+
+.coupon-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-top: .25rem;
+    line-height: 1;
+}
+.coupon-type-badge {
+    font-size: .7rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.coupon-right {
+    padding: 1rem 1.25rem;
+    flex: 1;
+    border-left: 2px dashed var(--border, #e2e8f0);
+    margin-left: 8px;
+}
+
+.coupon-code-box {
+    display: flex; align-items: center; gap: .5rem;
+    background: #f1f5f9;
+    border: 1px dashed #94a3b8;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+.coupon-code-box code { font-weight: 700; color: var(--primary); flex: 1; }
+</style>
+
+<script>
+document.querySelectorAll('.copy-coupon').forEach(b => {
+    b.addEventListener('click', () => {
+        const code = b.dataset.code;
+        navigator.clipboard.writeText(code).then(() => {
+            if (window.toast) window.toast('Code « ' + code + ' » copié dans le presse-papiers', 'success', 3000);
+            const original = b.innerHTML;
+            b.innerHTML = '<i class="fas fa-check"></i>';
+            b.classList.add('btn-success');
+            b.classList.remove('btn-outline-primary');
+            setTimeout(() => {
+                b.innerHTML = original;
+                b.classList.remove('btn-success');
+                b.classList.add('btn-outline-primary');
+            }, 2000);
+        });
+    });
+});
+</script>

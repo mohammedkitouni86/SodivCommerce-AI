@@ -1,0 +1,720 @@
+@model TechVisionMaroc.Models.Produit
+@inject IPrixService Prix
+@{
+    ViewData["Title"] = Model.Nom;
+    var recommandations = ViewBag.Recommandations as List<TechVisionMaroc.Models.Produit> ?? new();
+    var recosCollab = ViewBag.RecommandationsCollaboratives as List<TechVisionMaroc.Models.Produit> ?? new();
+    var prixAffiche = Model.PrixPromo ?? Model.Prix;
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var imageAbs = string.IsNullOrEmpty(Model.ImageUrl) ? baseUrl + "/images/placeholder.svg"
+                 : (Model.ImageUrl.StartsWith("http") ? Model.ImageUrl : baseUrl + Model.ImageUrl);
+    var descMeta = (Model.Description ?? "").Replace("\"", "'");
+    if (descMeta.Length > 160) descMeta = descMeta.Substring(0, 157) + "...";
+    var jsonLd = new {
+        context     = "https://schema.org/",
+        type        = "Product",
+        name        = Model.Nom,
+        image       = imageAbs,
+        description = descMeta,
+        brand       = new { type = "Brand", name = Model.Marque },
+        sku         = Model.Reference,
+        offers      = new {
+            type          = "Offer",
+            priceCurrency = "MAD",
+            price         = prixAffiche,
+            availability  = Model.Stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            url           = $"{baseUrl}/Produit/Details/{Model.Id}"
+        },
+        aggregateRating = Model.NombreAvis > 0 ? new {
+            type        = "AggregateRating",
+            ratingValue = Model.NoteMoyenne,
+            reviewCount = Model.NombreAvis
+        } : null
+    };
+}
+
+@section MetaTags {
+    <meta name="description" content="@descMeta" />
+    <meta name="keywords" content="@Model.Nom, @Model.Marque, @(Model.Categorie?.Nom), SODIV Bureau, Maroc" />
+    <meta property="og:type" content="product" />
+    <meta property="og:title" content="@Model.Nom — @Model.Marque" />
+    <meta property="og:description" content="@descMeta" />
+    <meta property="og:image" content="@imageAbs" />
+    <meta property="og:url" content="@baseUrl/Produit/Details/@Model.Id" />
+    <meta property="og:site_name" content="SODIV Bureau" />
+    <meta property="product:price:amount" content="@prixAffiche" />
+    <meta property="product:price:currency" content="MAD" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@Model.Nom" />
+    <meta name="twitter:description" content="@descMeta" />
+    <meta name="twitter:image" content="@imageAbs" />
+    <link rel="canonical" href="@baseUrl/Produit/Details/@Model.Id" />
+    <script type="application/ld+json">
+        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(jsonLd, new System.Text.Json.JsonSerializerOptions {
+            PropertyNamingPolicy = null,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        }).Replace("\"type\":", "\"@type\":").Replace("\"context\":", "\"@context\":"))
+    </script>
+}
+
+<div class="bg-light py-3 border-bottom">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Accueil</a></li>
+                <li class="breadcrumb-item"><a href="/Catalogue">Catalogue</a></li>
+                <li class="breadcrumb-item"><a href="/Catalogue?categorieId=@Model.CategorieId">@Model.Categorie?.Nom</a></li>
+                <li class="breadcrumb-item active text-truncate">@Model.Nom</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row g-5">
+        <!-- Galerie images -->
+        @{
+            var imgPrincipale = string.IsNullOrEmpty(Model.ImageUrl) ? "/images/placeholder.svg" : Model.ImageUrl;
+            // Génère 3 variantes supplémentaires basées sur l'ID + mot-clé de la catégorie
+            // (loremflickr renvoie une photo différente à chaque lock)
+            string? motCleCat = Model.Categorie?.Nom?.ToLowerInvariant() switch
+            {
+                var n when n != null && n.Contains("papier")    => "paper,office",
+                var n when n != null && n.Contains("stylo")     => "pen,writing",
+                var n when n != null && n.Contains("ordinat")   => "laptop,computer",
+                var n when n != null && n.Contains("imprim")    => "printer",
+                var n when n != null && n.Contains("smartph")   => "smartphone",
+                var n when n != null && n.Contains("tablet")    => "tablet",
+                var n when n != null && n.Contains("téléph")    => "phone,office",
+                var n when n != null && n.Contains("bureau")    => "office,desk",
+                var n when n != null && n.Contains("fauteuil")  => "office,chair",
+                var n when n != null && n.Contains("siège")     => "office,chair",
+                var n when n != null && n.Contains("classeur")  => "binder,folder",
+                var n when n != null && n.Contains("agraf")     => "stapler",
+                var n when n != null && n.Contains("calcul")    => "calculator",
+                var n when n != null && n.Contains("écran")     => "monitor",
+                var n when n != null && n.Contains("photo")     => "camera",
+                _ => "product,office"
+            };
+            // Galerie : on prend d'abord les images réelles définies (ordre 1→4),
+            // puis on complète jusqu'à 4 avec des variantes loremflickr selon la catégorie.
+            var images = new List<string>(Model.Galerie);
+            if (images.Count == 0) images.Add(imgPrincipale);
+            for (int k = 1; images.Count < 4; k++)
+            {
+                images.Add($"https://loremflickr.com/600/600/{motCleCat}?lock={Model.Id * 100 + k}");
+            }
+        }
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm p-3">
+                <div id="galerieProduit" class="carousel slide" data-bs-ride="false">
+                    <!-- Carrousel principal avec zoom au survol -->
+                    <div class="carousel-inner rounded">
+                        @for (int i = 0; i < images.Count; i++)
+                        {
+                            <div class="carousel-item @(i == 0 ? "active" : "")">
+                                <div class="zoom-container" data-zoom-src="@images[i]">
+                                    <img src="@images[i]" class="zoom-img" alt="@Model.Nom (@(i+1)/@images.Count)" />
+                                    <div class="zoom-lens"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Panneau zoom (à droite, hors carrousel) -->
+                    <div id="zoomPanel" class="zoom-panel d-none"></div>
+
+                    <!-- Flèches -->
+                    <button class="carousel-control-prev" type="button" data-bs-target="#galerieProduit" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                        <span class="visually-hidden">Précédent</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#galerieProduit" data-bs-slide="next">
+                        <span class="carousel-control-next-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                        <span class="visually-hidden">Suivant</span>
+                    </button>
+                </div>
+
+                <!-- Miniatures cliquables -->
+                <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+                    @for (int i = 0; i < images.Count; i++)
+                    {
+                        <button type="button" class="btn p-1 border @(i == 0 ? "border-primary border-2" : "border-light")"
+                                data-bs-target="#galerieProduit" data-bs-slide-to="@i"
+                                style="width:64px; height:64px; background:#fff;">
+                            <img src="@images[i]" alt="Miniature @(i+1)" class="w-100 h-100" style="object-fit:cover;" />
+                        </button>
+                    }
+                </div>
+
+                @if (Model.PrixPromo.HasValue)
+                {
+                    var remise = (int)Math.Round((1 - Model.PrixPromo.Value / Model.Prix) * 100);
+                    <div class="mt-3 text-center">
+                        <span class="badge bg-danger fs-6">Économisez @remise%</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+<style>
+#galerieProduit .carousel-control-prev,
+#galerieProduit .carousel-control-next {
+    width: 10%; opacity: .85;
+}
+#galerieProduit .carousel-control-prev-icon,
+#galerieProduit .carousel-control-next-icon {
+    background-size: 60% 60%;
+    background-color: rgba(0,0,0,.55);
+    border-radius: 50%;
+    width: 38px; height: 38px;
+}
+#galerieProduit .carousel-control-prev:hover .carousel-control-prev-icon,
+#galerieProduit .carousel-control-next:hover .carousel-control-next-icon { background-color: rgba(0,0,0,.85); }
+#galerieProduit button[data-bs-slide-to].active {
+    border-color: #0d6efd !important;
+    border-width: 2px !important;
+}
+
+/* ── Zoom au survol ────────────────────────────── */
+.zoom-container {
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+    border-radius: .35rem;
+    cursor: zoom-in;
+    height: 400px;
+    display: flex; align-items: center; justify-content: center;
+}
+.zoom-img {
+    max-height: 400px;
+    max-width: 100%;
+    object-fit: contain;
+    user-select: none;
+    pointer-events: none;
+}
+.zoom-lens {
+    position: absolute;
+    border: 2px solid #0d6efd;
+    background: rgba(13,110,253,.08);
+    width: 120px; height: 120px;
+    pointer-events: none;
+    display: none;
+    border-radius: 4px;
+}
+.zoom-container.zooming .zoom-lens { display: block; }
+
+.zoom-panel {
+    position: fixed;
+    width: 500px; height: 500px;
+    background-repeat: no-repeat;
+    background-color: #fff;
+    border: 2px solid #0d6efd;
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    z-index: 1080;
+    pointer-events: none;
+}
+@@media (max-width: 991.98px) {
+    .zoom-panel { display: none !important; }
+    .zoom-container { cursor: default; }
+    .zoom-lens { display: none !important; }
+}
+</style>
+<script>
+// Met à jour la bordure active des miniatures au changement de slide
+document.getElementById('galerieProduit')?.addEventListener('slide.bs.carousel', function (ev) {
+    document.querySelectorAll('#galerieProduit ~ div button[data-bs-slide-to]').forEach(function (b, i) {
+        b.classList.toggle('border-primary', i === ev.to);
+        b.classList.toggle('border-2', i === ev.to);
+        b.classList.toggle('border-light', i !== ev.to);
+    });
+    // Cache le panneau zoom au changement
+    document.getElementById('zoomPanel')?.classList.add('d-none');
+});
+
+// ── Zoom à la loupe (façon Amazon) ───────────────────────────────
+(function () {
+    const ZOOM = 2.5; // facteur de zoom
+
+    function attach(container) {
+        const img    = container.querySelector('.zoom-img');
+        const lens   = container.querySelector('.zoom-lens');
+        const panel  = document.getElementById('zoomPanel');
+        const srcUrl = container.getAttribute('data-zoom-src');
+
+        if (!img || !lens || !panel || !srcUrl) return;
+
+        function show(e) {
+            const rect = container.getBoundingClientRect();
+            // Coordonnées dans le conteneur
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            if (x < 0 || y < 0 || x > rect.width || y > rect.height) { hide(); return; }
+
+            // Position de la loupe (centrée sur le curseur)
+            const lensW = lens.offsetWidth;
+            const lensH = lens.offsetHeight;
+            let lensX = x - lensW / 2;
+            let lensY = y - lensH / 2;
+            lensX = Math.max(0, Math.min(lensX, rect.width  - lensW));
+            lensY = Math.max(0, Math.min(lensY, rect.height - lensH));
+            lens.style.left = lensX + 'px';
+            lens.style.top  = lensY + 'px';
+
+            container.classList.add('zooming');
+
+            // Position du panneau zoom (à droite du conteneur)
+            panel.classList.remove('d-none');
+            // Taille du conteneur réel de l'image
+            const imgRect = img.getBoundingClientRect();
+            // Ratio basé sur la position de la loupe / taille du conteneur visible
+            const ratioX = lensX / (rect.width  - lensW);
+            const ratioY = lensY / (rect.height - lensH);
+
+            // Position du panneau (à droite de la galerie, suit la souris verticalement)
+            const panelW = panel.offsetWidth;
+            const galleryCard = container.closest('.card');
+            const galRect = galleryCard ? galleryCard.getBoundingClientRect() : rect;
+            let panelLeft = galRect.right + 15;
+            let panelTop  = galRect.top;
+            // Si pas la place à droite, on déborde sur la droite quand même
+            if (panelLeft + panelW > window.innerWidth - 10) {
+                panelLeft = window.innerWidth - panelW - 10;
+            }
+            panel.style.left = panelLeft + 'px';
+            panel.style.top  = panelTop  + 'px';
+            panel.style.backgroundImage = `url('${srcUrl}')`;
+            panel.style.backgroundSize  = `${rect.width * ZOOM}px ${rect.height * ZOOM}px`;
+            panel.style.backgroundPosition = `-${ratioX * (rect.width  * ZOOM - panel.offsetWidth)}px -${ratioY * (rect.height * ZOOM - panel.offsetHeight)}px`;
+        }
+
+        function hide() {
+            container.classList.remove('zooming');
+            panel.classList.add('d-none');
+        }
+
+        container.addEventListener('mousemove', show);
+        container.addEventListener('mouseleave', hide);
+        // Sur tactile (mobile/tablet), désactivé via CSS
+    }
+
+    // Attache à tous les conteneurs (1 par slide) — délégation
+    document.querySelectorAll('.zoom-container').forEach(attach);
+})();
+</script>
+
+        <!-- Infos -->
+        <div class="col-lg-7">
+            <div class="text-muted small mb-1">
+                <span class="badge bg-light text-dark border">@Model.Categorie?.Nom</span>
+                &nbsp;<span class="fw-semibold text-primary">@Model.Marque</span>
+                &nbsp;<span class="text-muted">Réf: @Model.Reference</span>
+            </div>
+
+            <h1 class="fw-bold mb-3">@Model.Nom</h1>
+
+            @if (Model.NoteMoyenne > 0)
+            {
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        <i class="fas fa-star @(i <= Model.NoteMoyenne ? "text-warning" : "text-muted")"></i>
+                    }
+                    <span class="text-muted">@Model.NoteMoyenne.ToString("F1") / 5 (@Model.NombreAvis avis)</span>
+                </div>
+            }
+
+            <!-- Prix -->
+            <div class="bg-light rounded-3 p-4 mb-4">
+                @{
+                    var prixTtc = Model.PrixPromo ?? Model.Prix;
+                    var prixHt  = Prix.Ht(prixTtc, Model.TauxTVA);
+                    var montantTva = Prix.Tva(prixTtc, Model.TauxTVA);
+                }
+                @if (Model.PrixPromo.HasValue)
+                {
+                    <div class="text-muted text-decoration-line-through">@Prix.Format(Model.Prix, Model.TauxTVA, false)</div>
+                    <div class="display-6 fw-bold text-primary">@Prix.Format(Model.PrixPromo.Value, Model.TauxTVA)</div>
+                }
+                else
+                {
+                    <div class="display-6 fw-bold text-primary">@Prix.Format(Model.Prix, Model.TauxTVA)</div>
+                }
+                <div class="small text-muted mt-2">
+                    <i class="fas fa-receipt me-1"></i>
+                    Prix : <strong>@prixTtc.ToString("N2") MAD</strong>
+                    &nbsp;·&nbsp; TVA @Model.TauxTVA.ToString("0.##")% incluse
+                </div>
+                @if (prixAffiche >= 500)
+                {
+                    <small class="text-success ms-3"><i class="fas fa-truck me-1"></i>Livraison gratuite</small>
+                }
+            </div>
+
+            <!-- Stock -->
+            @if (Model.Stock > 0)
+            {
+                <div class="mb-3">
+                    <span class="text-success fw-semibold"><i class="fas fa-circle-check me-1"></i>En stock</span>
+                    @if (Model.Stock < 10)
+                    {
+                        <span class="text-warning ms-2 small">(Plus que @Model.Stock en stock !)</span>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="mb-3 text-danger fw-semibold"><i class="fas fa-times-circle me-1"></i>Rupture de stock</div>
+            }
+
+            <!-- Ajouter au panier -->
+            @if (Model.Stock > 0)
+            {
+                <form asp-controller="Panier" asp-action="Ajouter" method="post" class="d-flex gap-3 align-items-center mb-4">
+                    <input type="hidden" name="produitId" value="@Model.Id" />
+                    <div class="input-group" style="width:130px">
+                        <button type="button" class="btn btn-outline-secondary" onclick="changerQte(-1)">−</button>
+                        <input type="number" name="quantite" id="quantite" class="form-control text-center" value="1" min="1" max="@Model.Stock" />
+                        <button type="button" class="btn btn-outline-secondary" onclick="changerQte(1)">+</button>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg px-4">
+                        <i class="fas fa-cart-plus me-2"></i>Ajouter au panier
+                    </button>
+                </form>
+                var urlProduit = $"{baseUrl}/Produit/Details/{Model.Id}";
+                var msgWa = $"Bonjour SODIV Bureau,\n\nJe veux commander ce produit :\n\n📦 {Model.Nom}\n💰 {prixAffiche:N0} MAD\n🖼️ {imageAbs}\n\n🔗 {urlProduit}\n\nMerci de me confirmer la disponibilité.";
+                <a href="https://wa.me/212661900569?text=@Uri.EscapeDataString(msgWa)"
+                   class="btn btn-success w-100 mb-3" target="_blank">
+                    <i class="fab fa-whatsapp me-2"></i>Commander via WhatsApp
+                </a>
+                <button type="button" class="btn btn-outline-primary w-100 mb-2"
+                        data-bs-toggle="modal" data-bs-target="#modalDevis">
+                    <i class="fas fa-file-invoice me-2"></i>Demander un devis
+                </button>
+                <button type="button" class="btn btn-outline-danger w-100 mb-4 wishlist-btn"
+                        data-produit-id="@Model.Id">
+                    <i class="far fa-heart me-2"></i>Ajouter à ma liste de souhaits
+                </button>
+            }
+
+            <!-- Avantages -->
+            <div class="row g-2 text-center">
+                <div class="col-4">
+                    <div class="bg-light rounded p-2 small"><i class="fas fa-truck text-primary mb-1 d-block"></i>Livraison rapide</div>
+                </div>
+                <div class="col-4">
+                    <div class="bg-light rounded p-2 small"><i class="fas fa-shield-alt text-success mb-1 d-block"></i>Garantie 1 an</div>
+                </div>
+                <div class="col-4">
+                    <div class="bg-light rounded p-2 small"><i class="fas fa-undo text-warning mb-1 d-block"></i>Retour 14j</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Description et Avis -->
+    <div class="mt-5">
+        <ul class="nav nav-tabs" id="produitTabs">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#desc">Description</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#avis">Avis (@Model.NombreAvis)</button></li>
+        </ul>
+        <div class="tab-content border border-top-0 rounded-bottom p-4">
+            <div class="tab-pane fade show active" id="desc">
+                <p class="mb-0">@Html.Raw(Html.Encode(Model.Description).Replace("\n", "<br/>"))</p>
+            </div>
+            <div class="tab-pane fade" id="avis">
+
+                @{
+                    bool estConnecte = ViewBag.EstConnecte == true;
+                    bool aDejaAvis   = ViewBag.ADejaAvis == true;
+                    bool aAchete     = ViewBag.AAchete == true;
+                }
+
+                <!-- Liste des avis existants -->
+                @if (!Model.Avis.Any())
+                {
+                    <p class="text-muted mb-4"><i class="fas fa-comment-slash me-2"></i>Aucun avis pour le moment. Soyez le premier !</p>
+                }
+                else
+                {
+                    <div class="mb-4">
+                        @foreach (var avis in Model.Avis.OrderByDescending(a => a.DateCreation))
+                        {
+                            <div class="border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>@avis.Utilisateur?.Prenom @(avis.Utilisateur?.Nom?.Length > 0 ? avis.Utilisateur.Nom[..1] + "." : "")</strong>
+                                        @if (avis.AnalyseSentiment == "Positif")
+                                        {
+                                            <span class="badge bg-success ms-2 small">Positif</span>
+                                        }
+                                        else if (avis.AnalyseSentiment == "Négatif")
+                                        {
+                                            <span class="badge bg-danger ms-2 small">Négatif</span>
+                                        }
+                                    </div>
+                                    <small class="text-muted">@avis.DateCreation.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                                </div>
+                                <div class="my-1">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <i class="fas fa-star @(i <= avis.Note ? "text-warning" : "text-muted") small"></i>
+                                    }
+                                </div>
+                                <p class="mb-0">@avis.Commentaire</p>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <hr />
+
+                <!-- Formulaire d'avis -->
+                @if (!estConnecte)
+                {
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <a href="/Account/Connexion?returnUrl=/Produit/Details/@Model.Id" class="alert-link">Connectez-vous</a>
+                        pour laisser un avis.
+                    </div>
+                }
+                else if (aDejaAvis)
+                {
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>Vous avez déjà laissé un avis pour ce produit. Merci !
+                    </div>
+                }
+                else if (!aAchete)
+                {
+                    <div class="alert alert-warning">
+                        <i class="fas fa-shopping-bag me-2"></i>Vous devez avoir <strong>acheté ce produit</strong> pour pouvoir laisser un avis.
+                    </div>
+                }
+                else
+                {
+                    <h5 class="fw-bold mb-3"><i class="fas fa-pen me-2 text-primary"></i>Votre avis</h5>
+                    <form method="post" action="/Avis/Soumettre">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="produitId" value="@Model.Id" />
+
+                        <!-- Étoiles cliquables -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Note <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-2 fs-3" id="etoiles">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="far fa-star text-warning etoile" style="cursor:pointer" data-val="@i"></i>
+                                }
+                            </div>
+                            <input type="hidden" name="note" id="noteInput" value="0" required />
+                            <div class="form-text" id="labelNote">Cliquez pour noter</div>
+                        </div>
+
+                        <!-- Commentaire -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Commentaire <span class="text-danger">*</span></label>
+                            <textarea name="commentaire" class="form-control" rows="4"
+                                      placeholder="Partagez votre expérience avec ce produit (minimum 10 caractères)..."
+                                      maxlength="1000" required minlength="10"></textarea>
+                            <div class="form-text">Merci d'utiliser un langage respectueux. Les avis offensants seront rejetés.</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary px-4"
+                                onclick="return document.getElementById('noteInput').value > 0 || (alert('Veuillez sélectionner une note.'), false)">
+                            <i class="fas fa-paper-plane me-2"></i>Publier mon avis
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommandations collaboratives (Les clients ont aussi acheté) -->
+    @if (recosCollab.Any())
+    {
+        <div class="mt-5">
+            <h3 class="fw-bold mb-1"><i class="fas fa-users text-success me-2"></i>Les clients ont aussi acheté</h3>
+            <p class="text-muted mb-4">Suggéré à partir des comportements d'achat réels</p>
+            <div class="row g-4">
+                @foreach (var r in recosCollab)
+                {
+                    <div class="col-6 col-md-3">
+                        @await Html.PartialAsync("_CarteProduit", r)
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Recommandations IA -->
+    @if (recommandations.Any())
+    {
+        <div class="mt-5">
+            <h3 class="fw-bold mb-1"><i class="fas fa-robot text-primary me-2"></i>Recommandés pour vous</h3>
+            <p class="text-muted mb-4">Sélection par notre intelligence artificielle</p>
+            <div class="row g-4">
+                @foreach (var r in recommandations)
+                {
+                    <div class="col-6 col-md-3">
+                        @await Html.PartialAsync("_CarteProduit", r)
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal Devis -->
+<div class="modal fade" id="modalDevis" tabindex="-1" aria-labelledby="modalDevisLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden">
+
+            <!-- Header -->
+            <div class="modal-header border-0 pb-0 px-4 pt-4">
+                <h5 class="modal-title fw-bold" id="modalDevisLabel">
+                    Devis — @Model.Nom
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body px-4 pb-4 pt-3">
+                <form id="formDevis">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="nomProduit" value="@Model.Nom" />
+                    <input type="hidden" name="produitId"  value="@Model.Id"  />
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label text-uppercase fw-semibold small text-muted">
+                                Nom <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="nom" class="form-control bg-light border-0"
+                                   placeholder="Mohammed Alami"
+                                   style="border-radius:10px;padding:12px 14px"
+                                   value="@(Context.Session.GetString("UtilisateurNom") ?? "")"
+                                   required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-uppercase fw-semibold small text-muted">Société</label>
+                            <input type="text" name="societe" class="form-control bg-light border-0"
+                                   placeholder="Votre entreprise"
+                                   style="border-radius:10px;padding:12px 14px" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-uppercase fw-semibold small text-muted">
+                                Email <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" name="email" class="form-control bg-light border-0"
+                                   placeholder="vous@société.ma"
+                                   style="border-radius:10px;padding:12px 14px"
+                                   required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label text-uppercase fw-semibold small text-muted">Téléphone</label>
+                            <input type="tel" name="telephone" class="form-control bg-light border-0"
+                                   placeholder="06 XX XX XX XX"
+                                   style="border-radius:10px;padding:12px 14px" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-uppercase fw-semibold small text-muted">Message</label>
+                            <textarea name="message" class="form-control bg-light border-0" rows="3"
+                                      placeholder="Quantité souhaitée, délai, projet…"
+                                      style="border-radius:10px;padding:12px 14px;resize:vertical"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Alerte résultat -->
+                    <div id="devisAlerte" class="mt-3 d-none"></div>
+
+                    <button type="submit" id="btnDevis"
+                            class="btn btn-danger w-100 fw-bold mt-4"
+                            style="border-radius:10px;padding:14px;font-size:1rem">
+                        Envoyer la demande &nbsp;→
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function changerQte(delta) {
+    const input = document.getElementById('quantite');
+    const val = parseInt(input.value) + delta;
+    const max = parseInt(input.max);
+    input.value = Math.max(1, Math.min(max, val));
+}
+
+// Formulaire devis
+(function () {
+    const form = document.getElementById('formDevis');
+    if (!form) return;
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn   = document.getElementById('btnDevis');
+        const alerte= document.getElementById('devisAlerte');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Envoi en cours…';
+        alerte.className = 'd-none';
+
+        try {
+            const data = new FormData(form);
+            const res  = await fetch('/Devis/Envoyer', { method: 'POST', body: data });
+            const json = await res.json();
+
+            if (json.ok) {
+                alerte.className = 'alert alert-success mt-3';
+                alerte.innerHTML = '<i class="fas fa-check-circle me-2"></i>Votre demande a été envoyée avec succès ! Nous vous répondrons dans les plus brefs délais.';
+                form.querySelectorAll('input:not([type=hidden]),textarea').forEach(f => f.value = '');
+                btn.innerHTML = '<i class="fas fa-check me-2"></i>Envoyé !';
+            } else {
+                alerte.className = 'alert alert-danger mt-3';
+                alerte.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + (json.erreur || 'Une erreur est survenue.');
+                btn.disabled = false;
+                btn.innerHTML = 'Envoyer la demande &nbsp;→';
+            }
+        } catch {
+            alerte.className = 'alert alert-danger mt-3';
+            alerte.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Erreur réseau. Veuillez réessayer.';
+            btn.disabled = false;
+            btn.innerHTML = 'Envoyer la demande &nbsp;→';
+        }
+    });
+})();
+
+// Étoiles interactives
+(function () {
+    const etoiles = document.querySelectorAll('.etoile');
+    const input   = document.getElementById('noteInput');
+    const label   = document.getElementById('labelNote');
+    if (!etoiles.length) return;
+
+    const labels = ['', 'Très mauvais', 'Mauvais', 'Correct', 'Bien', 'Excellent'];
+
+    function colorier(n) {
+        etoiles.forEach((e, i) => {
+            e.className = i < n
+                ? 'fas fa-star text-warning etoile'
+                : 'far fa-star text-warning etoile';
+            e.style.cursor = 'pointer';
+        });
+    }
+
+    etoiles.forEach((e, i) => {
+        e.addEventListener('mouseover', () => colorier(i + 1));
+        e.addEventListener('mouseleave', () => colorier(parseInt(input.value)));
+        e.addEventListener('click', () => {
+            input.value = i + 1;
+            colorier(i + 1);
+            label.textContent = labels[i + 1];
+            label.className = 'form-text text-warning fw-semibold';
+        });
+    });
+})();
+</script>
+}

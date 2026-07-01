@@ -1,0 +1,118 @@
+services:
+
+  # ── Application ASP.NET Core ──────────────────────────────────────────────
+  web:
+    build:
+      context: ./src/TechVisionMaroc.Web
+      dockerfile: Dockerfile
+    container_name: techvision-web
+    ports:
+      - "5000:80"
+      - "5001:443"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__Default=Server=sqlserver;Database=TechVisionMarocDB;User Id=sa;Password=${DB_SA_PASSWORD};TrustServerCertificate=True;
+      - ConnectionStrings__Redis=redis:6379
+      - IA__BaseUrl=http://ia:8000
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - techvision-net
+
+  # ── Service IA Python FastAPI ─────────────────────────────────────────────
+  ia:
+    build:
+      context: ./src/TechVisionMaroc.AI
+      dockerfile: Dockerfile
+    container_name: techvision-ia
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_CONNECTION=DRIVER={ODBC Driver 17 for SQL Server};SERVER=sqlserver;DATABASE=TechVisionMarocDB;UID=sa;PWD=${DB_SA_PASSWORD}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - techvision-net
+
+  # ── SQL Server ────────────────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: techvision-sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_SA_PASSWORD}
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${DB_SA_PASSWORD}' -C -No -Q 'SELECT 1' || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P '${DB_SA_PASSWORD}' -Q 'SELECT 1'"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - techvision-net
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: techvision-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - techvision-net
+
+  # ── Metabase (Business Intelligence / Dashboards) ────────────────────────
+  metabase:
+    image: metabase/metabase:latest
+    container_name: techvision-metabase
+    ports:
+      - "3030:3000"
+    environment:
+      - MB_DB_TYPE=h2
+      - MB_DB_FILE=/metabase-data/metabase.db
+      - JAVA_TIMEZONE=Africa/Casablanca
+    volumes:
+      - metabase-data:/metabase-data
+    restart: unless-stopped
+    networks:
+      - techvision-net
+
+  # ── Nginx (reverse proxy) ─────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: techvision-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/certs:/etc/nginx/certs:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - techvision-net
+
+volumes:
+  sqlserver-data:
+  redis-data:
+  metabase-data:
+
+networks:
+  techvision-net:
+    driver: bridge

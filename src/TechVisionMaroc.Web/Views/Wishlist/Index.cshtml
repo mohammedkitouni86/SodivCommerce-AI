@@ -1,0 +1,128 @@
+@model List<TechVisionMaroc.Models.Wishlist>
+@inject IPrixService Prix
+@{
+    ViewData["Title"] = "Ma liste de souhaits";
+}
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-0"><i class="fas fa-heart text-danger me-2"></i>Ma liste de souhaits</h1>
+            <p class="text-muted mb-0">@Model.Count produit(s) sauvegardé(s)</p>
+        </div>
+        <a href="/Catalogue" class="btn btn-outline-primary">
+            <i class="fas fa-shopping-bag me-1"></i>Continuer mes achats
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5 bg-light rounded-3">
+            <i class="fas fa-heart-broken fa-4x text-muted mb-3"></i>
+            <h4>Votre liste est vide</h4>
+            <p class="text-muted">Cliquez sur ❤️ sur n'importe quel produit pour l'ajouter ici.</p>
+            <a href="/Catalogue" class="btn btn-primary btn-lg">
+                <i class="fas fa-search me-2"></i>Découvrir les produits
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var w in Model)
+            {
+                if (w.Produit == null) continue;
+                var prixActuel = w.Produit.PrixPromo ?? w.Produit.Prix;
+                var baisse     = w.PrixReference - prixActuel;
+                var pourcentageBaisse = w.PrixReference > 0 ? (baisse / w.PrixReference) * 100 : 0;
+
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 position-relative">
+                        @if (baisse > 0)
+                        {
+                            <span class="badge bg-success position-absolute top-0 start-0 m-2 fs-6">
+                                <i class="fas fa-arrow-down me-1"></i>-@pourcentageBaisse.ToString("0")%
+                            </span>
+                        }
+                        <a href="/Produit/Details/@w.ProduitId">
+                            <img src="@(string.IsNullOrEmpty(w.Produit.ImageUrl) ? "/images/placeholder.svg" : w.Produit.ImageUrl)"
+                                 class="card-img-top p-3" style="height:180px;object-fit:contain" alt="@w.Produit.Nom" />
+                        </a>
+                        <div class="card-body d-flex flex-column">
+                            <small class="text-muted">@w.Produit.Marque</small>
+                            <h6 class="fw-semibold">
+                                <a href="/Produit/Details/@w.ProduitId" class="text-dark text-decoration-none">@w.Produit.Nom</a>
+                            </h6>
+
+                            <div class="mt-2">
+                                <div class="fw-bold text-primary fs-5">@Prix.Format(prixActuel, w.Produit.TauxTVA)</div>
+                                @if (baisse > 0)
+                                {
+                                    <div class="small text-success">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Vous économisez <strong>@baisse.ToString("N2") MAD</strong>
+                                        (ref. @w.PrixReference.ToString("N2") MAD)
+                                    </div>
+                                }
+                                else if (baisse < 0)
+                                {
+                                    <div class="small text-danger">
+                                        <i class="fas fa-arrow-up me-1"></i>
+                                        Prix en hausse de @Math.Abs(baisse).ToString("N2") MAD
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="small text-muted">Prix inchangé depuis l'ajout</div>
+                                }
+                            </div>
+
+                            <div class="mt-auto pt-3 d-flex gap-2">
+                                @if (w.Produit.Stock > 0)
+                                {
+                                    <form asp-controller="Panier" asp-action="Ajouter" method="post" class="flex-grow-1">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="produitId" value="@w.ProduitId" />
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-cart-plus me-1"></i>Panier
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-secondary btn-sm flex-grow-1" disabled>Rupture</button>
+                                }
+
+                                <form method="post" action="/wishlist/alerte" title="@(w.AlertePrix ? "Désactiver l'alerte" : "Activer l'alerte de baisse de prix")">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="produitId" value="@w.ProduitId" />
+                                    <button type="submit" class="btn btn-sm @(w.AlertePrix ? "btn-warning" : "btn-outline-secondary")">
+                                        <i class="fas @(w.AlertePrix ? "fa-bell" : "fa-bell-slash")"></i>
+                                    </button>
+                                </form>
+
+                                <form method="post" action="/wishlist/supprimer">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="produitId" value="@w.ProduitId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirer de la liste">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="mt-2 small text-muted">
+                                <i class="fas fa-clock me-1"></i>Ajouté le @w.DateAjout.ToLocalTime().ToString("dd/MM/yyyy")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="alert alert-info mt-4 small">
+            <i class="fas fa-info-circle me-1"></i>
+            <strong>Alertes de prix :</strong> Quand vous activez la cloche 🔔, vous recevrez un email automatiquement
+            si le prix d'un produit de votre liste baisse de plus de 5%.
+        </div>
+    }
+</div>

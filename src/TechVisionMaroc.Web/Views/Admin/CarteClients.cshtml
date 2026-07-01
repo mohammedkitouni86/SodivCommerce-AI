@@ -1,0 +1,155 @@
+@{
+    ViewData["Title"] = "Carte des clients";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+        #carteVilles { height: 600px; border-radius: .5rem; }
+        .leaflet-popup-content { font-size: .9rem; }
+        .legend-bubble {
+            display:inline-block; border-radius:50%;
+            background: rgba(220,53,69,.6); border:2px solid #dc3545;
+        }
+    </style>
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4 d-flex align-items-center gap-3">
+        <h4 class="mb-0 fw-bold"><i class="fas fa-map-marked-alt text-danger me-2"></i>Carte des clients</h4>
+        <span class="text-muted small">Répartition géographique des commandes (hors annulées)</span>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+    <!-- Statistiques -->
+    <div class="row g-3 mb-3" id="zoneStats"></div>
+
+    <!-- Carte -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-2">
+            <div id="carteVilles"></div>
+        </div>
+        <div class="card-footer bg-white small text-muted d-flex justify-content-between align-items-center">
+            <div>
+                <span class="legend-bubble me-1" style="width:8px;height:8px"></span> 1 commande
+                <span class="legend-bubble ms-3 me-1" style="width:16px;height:16px"></span> 10 commandes
+                <span class="legend-bubble ms-3 me-1" style="width:28px;height:28px"></span> 50+ commandes
+            </div>
+            <div id="villesInconnues" class="text-warning"></div>
+        </div>
+    </div>
+
+    <!-- Tableau classement -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+            <i class="fas fa-trophy me-2 text-warning"></i>Classement des villes
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tableVilles">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Ville</th>
+                        <th class="text-end">Commandes</th>
+                        <th class="text-end">Clients uniques</th>
+                        <th class="text-end">Chiffre d'affaires</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+    (async function () {
+        const res = await fetch('@ViewBag.AdminBase/carte-clients/data');
+        const data = await res.json();
+
+        // ── Statistiques ──────────────────────────────────────────────────────
+        const zoneStats = document.getElementById('zoneStats');
+        zoneStats.innerHTML = `
+            <div class="col-md-3"><div class="card border-0 shadow-sm bg-primary text-white"><div class="card-body py-3">
+                <div class="small opacity-75">Villes touchées</div>
+                <div class="h3 fw-bold mb-0">${data.stats.totalVilles}</div>
+            </div></div></div>
+            <div class="col-md-3"><div class="card border-0 shadow-sm bg-success text-white"><div class="card-body py-3">
+                <div class="small opacity-75">Commandes</div>
+                <div class="h3 fw-bold mb-0">${data.stats.totalCommandes}</div>
+            </div></div></div>
+            <div class="col-md-3"><div class="card border-0 shadow-sm bg-info text-white"><div class="card-body py-3">
+                <div class="small opacity-75">Clients uniques</div>
+                <div class="h3 fw-bold mb-0">${data.stats.totalClients}</div>
+            </div></div></div>
+            <div class="col-md-3"><div class="card border-0 shadow-sm bg-warning text-dark"><div class="card-body py-3">
+                <div class="small opacity-75">Chiffre d'affaires</div>
+                <div class="h3 fw-bold mb-0">${Number(data.stats.totalCA).toLocaleString('fr-MA',{maximumFractionDigits:0})} MAD</div>
+            </div></div></div>`;
+
+        // Villes inconnues (non géocodées)
+        if (data.inconnues && data.inconnues.length) {
+            document.getElementById('villesInconnues').innerHTML =
+                '<i class="fas fa-exclamation-triangle me-1"></i>Villes non géocodées : ' +
+                data.inconnues.join(', ');
+        }
+
+        // ── Carte Leaflet ─────────────────────────────────────────────────────
+        const map = L.map('carteVilles').setView([31.7917, -7.0926], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 18
+        }).addTo(map);
+
+        const maxCmd = Math.max(1, ...data.villes.map(v => v.nbCommandes));
+
+        data.villes.forEach(v => {
+            const rayon = 8 + Math.sqrt(v.nbCommandes / maxCmd) * 40;
+            const cercle = L.circleMarker([v.lat, v.lng], {
+                radius: rayon,
+                fillColor: '#dc3545',
+                color: '#b02a37',
+                weight: 2,
+                opacity: 0.9,
+                fillOpacity: 0.55
+            }).addTo(map);
+
+            cercle.bindPopup(`
+                <div>
+                    <strong style="font-size:1.05rem;color:#dc3545">${v.ville}</strong><br/>
+                    <i class="fas fa-shopping-bag"></i> ${v.nbCommandes} commande(s)<br/>
+                    <i class="fas fa-users"></i> ${v.nbClients} client(s) unique(s)<br/>
+                    <i class="fas fa-coins"></i> <strong>${Number(v.total).toLocaleString('fr-MA',{maximumFractionDigits:2})} MAD</strong>
+                </div>`);
+
+            cercle.bindTooltip(`${v.ville} (${v.nbCommandes})`, { permanent: false, direction: 'top' });
+        });
+
+        // ── Tableau classement ────────────────────────────────────────────────
+        const tbody = document.querySelector('#tableVilles tbody');
+        const tri = [...data.villes].sort((a,b) => b.nbCommandes - a.nbCommandes);
+        if (!tri.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Aucune commande enregistrée.</td></tr>';
+        } else {
+            tri.forEach((v, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="fw-bold text-muted">${i+1}</td>
+                    <td><i class="fas fa-map-marker-alt text-danger me-1"></i><strong>${v.ville}</strong></td>
+                    <td class="text-end fw-bold text-success">${v.nbCommandes}</td>
+                    <td class="text-end">${v.nbClients}</td>
+                    <td class="text-end fw-bold text-primary">${Number(v.total).toLocaleString('fr-MA',{maximumFractionDigits:2})} MAD</td>`;
+                tr.style.cursor = 'pointer';
+                tr.addEventListener('click', () => {
+                    map.flyTo([v.lat, v.lng], 11, { duration: 1.2 });
+                });
+                tbody.appendChild(tr);
+            });
+        }
+    })();
+    </script>
+}

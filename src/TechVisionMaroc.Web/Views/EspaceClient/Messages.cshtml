@@ -1,0 +1,109 @@
+@using TechVisionMaroc.Models
+@{
+    ViewData["Title"] = "Messagerie";
+    var conversations = (List<Conversation>)ViewBag.Conversations;
+    string LibelleStatut(StatutConversation s) => s switch {
+        StatutConversation.Ouverte => "Ouverte",
+        StatutConversation.EnAttente => "Attente réponse",
+        StatutConversation.Fermee => "Fermée",
+        _ => s.ToString()
+    };
+    string CouleurStatut(StatutConversation s) => s switch {
+        StatutConversation.Ouverte => "primary",
+        StatutConversation.EnAttente => "warning",
+        StatutConversation.Fermee => "secondary",
+        _ => "dark"
+    };
+}
+
+<div class="container py-5">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/Compte" class="text-decoration-none">Mon compte</a></li>
+            <li class="breadcrumb-item active">Messages</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="fas fa-comments text-primary me-2"></i>Centre de messagerie</h2>
+            <p class="text-muted mb-0">Échangez avec notre équipe support</p>
+        </div>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNouveauMsg">
+            <i class="fas fa-plus me-1"></i>Nouveau message
+        </button>
+    </div>
+
+    @if (TempData["Success"] != null) { <div class="alert alert-success">@TempData["Success"]</div> }
+
+    @if (!conversations.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5>Aucune conversation</h5>
+                <p class="text-muted">Posez votre première question, notre équipe répond sous 24h.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNouveauMsg">
+                    <i class="fas fa-paper-plane me-1"></i>Envoyer un message
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="list-group list-group-flush">
+                @foreach (var c in conversations)
+                {
+                    <a href="/Compte/messages/@c.Id" class="list-group-item list-group-item-action @(!c.LuParClient ? "fw-bold bg-light" : "")">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!c.LuParClient)
+                                    {
+                                        <span class="badge bg-danger">Nouveau</span>
+                                    }
+                                    <h6 class="mb-1">@c.Sujet</h6>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>@c.DateDernierMessage.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </small>
+                            </div>
+                            <span class="badge bg-@CouleurStatut(c.Statut)">@LibelleStatut(c.Statut)</span>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal nouveau message -->
+<div class="modal fade" id="modalNouveauMsg" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="/Compte/messages/nouveau">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-paper-plane me-2"></i>Nouveau message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Sujet *</label>
+                        <input type="text" name="sujet" class="form-control" required maxlength="200" placeholder="Ex: Question sur ma commande" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Votre message *</label>
+                        <textarea name="contenu" class="form-control" rows="6" required maxlength="4000"></textarea>
+                    </div>
+                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Notre équipe vous répond sous 24h (jours ouvrés).</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i>Envoyer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

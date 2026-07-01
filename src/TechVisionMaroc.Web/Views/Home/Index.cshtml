@@ -1,0 +1,725 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Cfg
+@{
+    ViewData["Title"] = "Accueil";
+    var produits = ViewBag.ProduitsVedettes as List<TechVisionMaroc.Models.Produit> ?? new();
+    var tendances = ViewBag.ProduitsTendances as List<TechVisionMaroc.Models.Produit> ?? new();
+    var categories = ViewBag.Categories as List<TechVisionMaroc.Models.Categorie> ?? new();
+    var recommandations = ViewBag.Recommandations as List<TechVisionMaroc.Models.Produit> ?? new();
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var s = Cfg.GetSection("Societe");
+}
+
+@section MetaTags {
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SODIV Bureau — Matériel informatique & Fournitures de bureau au Maroc" />
+    <meta property="og:description" content="Votre partenaire de confiance pour l'équipement professionnel à Salé et partout au Maroc. Livraison rapide, paiement sécurisé, retour 7 jours." />
+    <meta property="og:image" content="@baseUrl/images/logo-ag.png" />
+    <meta property="og:url" content="@baseUrl/" />
+    <meta property="og:locale" content="fr_MA" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Schema.org Organization + LocalBusiness (Google rich results / Knowledge Graph) -->
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@type": "Store",
+      "name": "@s["Nom"]",
+      "image": "@baseUrl/images/logo-ag.png",
+      "logo": "@baseUrl/images/logo-ag.png",
+      "url": "@baseUrl/",
+      "telephone": "@s["Telephone"]",
+      "email": "@s["Email"]",
+      "priceRange": "MAD",
+      "address": {
+        "@@type": "PostalAddress",
+        "streetAddress": "@s["Adresse"]",
+        "addressLocality": "@s["Ville"]",
+        "postalCode": "@s["CodePostal"]",
+        "addressCountry": "MA"
+      },
+      "geo": { "@@type": "GeoCoordinates", "latitude": 34.0531, "longitude": -6.7985 },
+      "openingHoursSpecification": [
+        { "@@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+          "opens": "09:00", "closes": "18:00" }
+      ],
+      "sameAs": [
+        "https://wa.me/212661900569"
+      ],
+      "aggregateRating": {
+        "@@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "127"
+      }
+    }
+    </script>
+}
+
+<!-- ═════════ HERO STYLE SHOPIFY (full-bleed background) ═════════ -->
+<section class="hero-shopify">
+    <!-- Background images en rotation -->
+    <div class="hero-bg-layer" id="heroBg">
+        <div class="hero-bg-slide active" style="background-image: url('/images/hero/hero1.jpg');"></div>
+        <div class="hero-bg-slide" style="background-image: url('/images/hero/hero2.jpg');"></div>
+        <div class="hero-bg-slide" style="background-image: url('/images/hero/hero3.jpg');"></div>
+        <div class="hero-bg-slide" style="background-image: url('/images/hero/hero4.jpg');"></div>
+        <div class="hero-bg-slide" style="background-image: url('/images/hero/hero5.jpg');"></div>
+        <div class="hero-bg-slide" style="background-image: url('/images/hero/hero6.jpg');"></div>
+    </div>
+
+    <!-- Overlay sombre pour lisibilité du texte -->
+    <div class="hero-overlay"></div>
+
+    <!-- Particules subtiles (effet wow) -->
+    <div class="hero-particles"></div>
+
+    <!-- Contenu texte -->
+    <div class="container position-relative" style="z-index: 5;">
+        <div class="hero-content">
+            <span class="hero-badge">
+                <i class="fas fa-bolt me-1"></i> @T.Get("HeroBadge")
+            </span>
+            <h1 class="hero-title">
+                @T.Get("HeroTitre1") <span class="hero-title-accent">@T.Get("Maroc")</span>
+            </h1>
+            <p class="hero-subtitle">@T.Get("HeroSous")</p>
+            <div class="hero-ctas">
+                <a href="/Catalogue" class="hero-btn hero-btn-primary">
+                    <i class="fas fa-shopping-bag me-2"></i>@T.Get("DecouvrirCatalogue")
+                </a>
+                <a href="https://wa.me/212661900569" class="hero-btn hero-btn-secondary">
+                    <i class="fab fa-whatsapp me-2"></i>@T.Get("DemanderDevis")
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-num">@(ViewBag.NombreProduits ?? 0)+</div>
+                    <div class="hero-stat-lbl">@T.Get("NbProduits")</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-num">@(ViewBag.NombreClients ?? 0)+</div>
+                    <div class="hero-stat-lbl">@T.Get("NbClients")</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-num">@(ViewBag.NombreCommandes ?? 0)+</div>
+                    <div class="hero-stat-lbl">@T.Get("NbCommandes")</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-num">5</div>
+                    <div class="hero-stat-lbl">@T.Get("AnsExperience")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicateurs (dots en bas) -->
+    <div class="hero-bg-dots">
+        <button type="button" class="hero-bg-dot active" data-bgslide="0"></button>
+        <button type="button" class="hero-bg-dot" data-bgslide="1"></button>
+        <button type="button" class="hero-bg-dot" data-bgslide="2"></button>
+        <button type="button" class="hero-bg-dot" data-bgslide="3"></button>
+        <button type="button" class="hero-bg-dot" data-bgslide="4"></button>
+        <button type="button" class="hero-bg-dot" data-bgslide="5"></button>
+    </div>
+</section>
+
+<style>
+    /* ═════════════════════════════════════════════════
+       HERO STYLE SHOPIFY — Full-bleed background image
+       ═════════════════════════════════════════════════ */
+    .hero-shopify {
+        position: relative;
+        width: 100%;
+        min-height: 88vh;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        color: #fff;
+    }
+
+    /* Background layer — images en rotation */
+    .hero-bg-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+    }
+    .hero-bg-slide {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center;
+        opacity: 0;
+        transform: scale(1.05);
+        transition: opacity 1.5s cubic-bezier(.4,0,.2,1), transform 8s linear;
+    }
+    .hero-bg-slide.active {
+        opacity: 1;
+        transform: scale(1);
+        animation: zoomKenburns 9s ease-out forwards;
+    }
+    @@keyframes zoomKenburns {
+        from { transform: scale(1); }
+        to   { transform: scale(1.1); }
+    }
+
+    /* Overlay sombre pour lisibilité */
+    .hero-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        background:
+            linear-gradient(90deg, rgba(5,8,24,.85) 0%, rgba(5,8,24,.55) 50%, rgba(5,8,24,.3) 100%),
+            linear-gradient(180deg, rgba(5,8,24,.3) 0%, rgba(5,8,24,0) 30%, rgba(5,8,24,.7) 100%);
+        pointer-events: none;
+    }
+
+    /* Particules subtiles */
+    .hero-particles {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        background-image: radial-gradient(circle, rgba(255,255,255,.15) 1px, transparent 1px);
+        background-size: 80px 80px;
+        animation: particleMove 60s linear infinite;
+        opacity: .4;
+        pointer-events: none;
+    }
+    @@keyframes particleMove {
+        from { background-position: 0 0; }
+        to   { background-position: 80px 80px; }
+    }
+
+    /* Contenu texte */
+    .hero-content {
+        max-width: 650px;
+        padding: 4rem 0;
+    }
+
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255,255,255,.15);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(255,255,255,.25);
+        color: #fff;
+        font-weight: 600;
+        font-size: .85rem;
+        padding: .5rem 1.1rem;
+        border-radius: 999px;
+        margin-bottom: 1.5rem;
+        animation: badgeFadeIn .8s ease-out backwards .2s;
+    }
+
+    .hero-title {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        font-size: clamp(2.5rem, 6vw, 5rem);
+        font-weight: 800;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        margin: 0 0 1.5rem;
+        color: #fff;
+        text-shadow: 0 4px 30px rgba(0,0,0,.4);
+        animation: titleFadeIn 1s cubic-bezier(.4,0,.2,1) backwards .4s;
+    }
+    .hero-title-accent {
+        background: linear-gradient(135deg, #ffc107, #fd7e14);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: clamp(1rem, 1.5vw, 1.25rem);
+        line-height: 1.6;
+        color: rgba(255,255,255,.9);
+        margin-bottom: 2rem;
+        max-width: 550px;
+        text-shadow: 0 2px 12px rgba(0,0,0,.3);
+        animation: subtitleFadeIn .9s ease-out backwards .6s;
+    }
+
+    .hero-ctas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 3rem;
+        animation: ctaFadeIn .9s ease-out backwards .8s;
+    }
+
+    .hero-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 1rem 2rem;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 1rem;
+        text-decoration: none;
+        transition: all .3s cubic-bezier(.4,0,.2,1);
+        border: 2px solid transparent;
+    }
+    .hero-btn-primary {
+        background: #fff;
+        color: #050818;
+        box-shadow: 0 10px 30px rgba(255,255,255,.25);
+    }
+    .hero-btn-primary:hover {
+        background: #ffc107;
+        color: #050818;
+        transform: translateY(-3px) scale(1.03);
+        box-shadow: 0 15px 40px rgba(255,193,7,.45);
+    }
+    .hero-btn-secondary {
+        background: rgba(255,255,255,.1);
+        color: #fff;
+        border-color: rgba(255,255,255,.4);
+        backdrop-filter: blur(10px);
+    }
+    .hero-btn-secondary:hover {
+        background: rgba(37,211,102,.9);
+        color: #fff;
+        border-color: rgba(37,211,102,.9);
+        transform: translateY(-3px) scale(1.03);
+    }
+
+    /* Statistiques */
+    .hero-stats {
+        display: flex;
+        gap: 2.5rem;
+        flex-wrap: wrap;
+        animation: statsFadeIn 1s ease-out backwards 1s;
+    }
+    .hero-stat {
+        text-align: left;
+    }
+    .hero-stat-num {
+        font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+        font-size: 2rem;
+        font-weight: 800;
+        color: #ffc107;
+        line-height: 1;
+        text-shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+    .hero-stat-lbl {
+        font-size: .85rem;
+        color: rgba(255,255,255,.75);
+        margin-top: .25rem;
+        font-weight: 500;
+    }
+
+    /* Dots en bas (sélecteur de fond) */
+    .hero-bg-dots {
+        position: absolute;
+        bottom: 30px; left: 50%;
+        transform: translateX(-50%);
+        display: flex; gap: 10px;
+        z-index: 10;
+    }
+    .hero-bg-dot {
+        width: 36px; height: 4px;
+        background: rgba(255,255,255,.3);
+        border: none;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: all .3s ease;
+        padding: 0;
+    }
+    .hero-bg-dot.active {
+        background: #ffc107;
+        width: 56px;
+        box-shadow: 0 0 12px rgba(255,193,7,.6);
+    }
+    .hero-bg-dot:hover { background: rgba(255,255,255,.5); }
+
+    /* Animations */
+    @@keyframes badgeFadeIn   { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes titleFadeIn   { from { opacity: 0; transform: translateY(40px);  } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes subtitleFadeIn{ from { opacity: 0; transform: translateY(30px);  } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes ctaFadeIn     { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+    @@keyframes statsFadeIn   { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .hero-shopify { min-height: 70vh; }
+        .hero-content { padding: 3rem 0; }
+        .hero-stats { gap: 1.5rem; }
+        .hero-stat-num { font-size: 1.5rem; }
+    }
+</style>
+
+<script>
+(function(){
+    const slides = document.querySelectorAll('.hero-bg-slide');
+    const dots   = document.querySelectorAll('.hero-bg-dot');
+    if (!slides.length) return;
+
+    let idx = 0;
+    let timer = null;
+    const INTERVAL = 7000;
+
+    function show(i) {
+        idx = (i + slides.length) % slides.length;
+        slides.forEach((s, k) => s.classList.toggle('active', k === idx));
+        dots.forEach((d, k)   => d.classList.toggle('active', k === idx));
+    }
+    function autoplay() { stop(); timer = setInterval(() => show(idx + 1), INTERVAL); }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    dots.forEach((d, k) => d.addEventListener('click', () => { show(k); autoplay(); }));
+    autoplay();
+})();
+</script>
+
+<!-- Barre de recherche mobile -->
+<div class="bg-light py-3 d-lg-none">
+    <div class="container">
+        <form action="/recherche" method="get">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control form-control-lg" placeholder="Rechercher..." />
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Avantages -->
+<section class="py-4 bg-white border-bottom">
+    <div class="container">
+        <div class="row g-3 text-center">
+            <div class="col-6 col-md-3">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <i class="fas fa-truck text-primary fa-lg"></i>
+                    <div class="text-start">
+                        <div class="fw-semibold small">@T.Get("LivraisonGratuite")</div>
+                        <div class="text-muted" style="font-size:.75rem">@T.Get("Des500")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <i class="fas fa-shield-alt text-success fa-lg"></i>
+                    <div class="text-start">
+                        <div class="fw-semibold small">@T.Get("PaiementSecurise")</div>
+                        <div class="text-muted" style="font-size:.75rem">@T.Get("SSL256")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <i class="fas fa-undo text-warning fa-lg"></i>
+                    <div class="text-start">
+                        <div class="fw-semibold small">@T.Get("Retour14")</div>
+                        <div class="text-muted" style="font-size:.75rem">@T.Get("SatisfaitRembourse")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <i class="fas fa-headset text-info fa-lg"></i>
+                    <div class="text-start">
+                        <div class="fw-semibold small">@T.Get("Support77")</div>
+                        <div class="text-muted" style="font-size:.75rem">9h – 18h</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Catégories -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-down">
+            <h2 class="fw-bold">@T.Get("NosCategories")</h2>
+            <p class="text-muted">@T.Get("CliquezCategorie")</p>
+        </div>
+
+        <!-- Grille des catégories parentes -->
+        <div class="row g-3 justify-content-center" id="grilleCats">
+            @{ int catIdx = 0; }
+            @foreach (var cat in categories)
+            {
+                var hasSous = cat.SousCategories.Any();
+                <div class="col-6 col-md-4 col-lg-2" data-aos="zoom-in" data-aos-delay="@(catIdx * 60)">
+                    <div class="cat-card card h-100 text-center text-decoration-none border-0 shadow-sm p-3
+                                @(hasSous ? "has-sous" : "")"
+                         data-cat-id="@cat.Id"
+                         style="cursor:pointer;transition:all .2s">
+                @{ catIdx++; }
+                        <div class="card-body p-2">
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center
+                                        justify-content-center mb-3"
+                                 style="width:56px;height:56px">
+                                <i class="fas @cat.IconeClass fa-lg text-primary"></i>
+                            </div>
+                            <div class="fw-semibold small">@cat.Nom</div>
+                            @if (hasSous)
+                            {
+                                <div class="text-muted mt-1" style="font-size:.7rem">
+                                    <i class="fas fa-chevron-down cat-arrow" style="transition:.2s"></i>
+                                    @cat.SousCategories.Count sous-catégorie(s)
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Panel sous-catégories (s'affiche sous la grille) -->
+        <div id="panelSousCats" class="mt-4 d-none">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">
+                            <i class="fas fa-tags text-primary me-2"></i>
+                            <span id="panelTitre"></span>
+                        </h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="fermerPanel()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="row g-3" id="listeSousCats"></div>
+                    <div class="mt-3 text-center">
+                        <a href="#" id="lienTousProduits" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-th me-1"></i>Voir tous les produits de cette catégorie
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Données des sous-catégories (JSON) -->
+@{
+    var catsJson = System.Text.Json.JsonSerializer.Serialize(
+        categories.ToDictionary(
+            c => c.Id.ToString(),
+            c => new {
+                nom      = c.Nom,
+                icone    = c.IconeClass,
+                lien     = $"/Catalogue?categorieId={c.Id}",
+                sousCats = c.SousCategories.Select(s => new { id = s.Id, nom = s.Nom, icone = s.IconeClass }).ToList()
+            }
+        )
+    );
+}
+<script>
+const categoriesData = @Html.Raw(catsJson);
+
+let catActive = null;
+
+document.querySelectorAll('.cat-card').forEach(card => {
+    card.addEventListener('click', function () {
+        const id  = parseInt(this.dataset.catId);
+        const cat = categoriesData[id];
+        if (!cat) { window.location = '/Catalogue?categorieId=' + id; return; }
+
+        if (!cat.sousCats.length) { window.location = cat.lien; return; }
+
+        // Désactiver l'ancienne carte active
+        document.querySelectorAll('.cat-card').forEach(c => {
+            c.classList.remove('border-primary', 'border-2');
+            c.querySelector('.cat-arrow')?.classList.remove('fa-chevron-up');
+            c.querySelector('.cat-arrow')?.classList.add('fa-chevron-down');
+        });
+
+        if (catActive === id) {
+            fermerPanel();
+            return;
+        }
+
+        catActive = id;
+        this.classList.add('border-primary', 'border-2');
+        this.querySelector('.cat-arrow')?.classList.replace('fa-chevron-down', 'fa-chevron-up');
+
+        // Remplir le panel
+        document.getElementById('panelTitre').textContent = cat.nom;
+        document.getElementById('lienTousProduits').href   = cat.lien;
+
+        const liste = document.getElementById('listeSousCats');
+        liste.innerHTML = cat.sousCats.map(s => `
+            <div class="col-6 col-md-3 col-lg-2">
+                <a href="/Catalogue?categorieId=${s.id}"
+                   class="card border-0 bg-light text-center text-decoration-none p-3 h-100 hover-lift">
+                    <div class="bg-white rounded-circle d-inline-flex align-items-center justify-content-center mx-auto mb-2"
+                         style="width:46px;height:46px;box-shadow:0 2px 6px rgba(0,0,0,.08)">
+                        <i class="fas ${s.icone} text-primary"></i>
+                    </div>
+                    <div class="fw-semibold small">${s.nom}</div>
+                </a>
+            </div>`).join('');
+
+        document.getElementById('panelSousCats').classList.remove('d-none');
+
+        // Scroll vers le panel
+        setTimeout(() => document.getElementById('panelSousCats').scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    });
+});
+
+function fermerPanel() {
+    catActive = null;
+    document.getElementById('panelSousCats').classList.add('d-none');
+    document.querySelectorAll('.cat-card').forEach(c => {
+        c.classList.remove('border-primary', 'border-2');
+        c.querySelector('.cat-arrow')?.classList.replace('fa-chevron-up', 'fa-chevron-down');
+    });
+}
+</script>
+
+<!-- Produits vedettes -->
+@if (produits.Any())
+{
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1">@T.Get("ProduitsVedettes")</h2>
+                    <p class="text-muted mb-0">@T.Get("MeilleursSelections")</p>
+                </div>
+                <a href="/Catalogue" class="btn btn-outline-primary">@T.Get("VoirTout") <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="row g-4">
+                @foreach (var p in produits)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_CarteProduit", p)
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Recommandé pour vous (basé sur navigation) -->
+@if (recommandations.Any())
+{
+    <section class="py-5 bg-white border-top" id="mes-recommandations">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1">
+                        <i class="fas fa-magic text-primary me-2"></i>@T.Get("RecommandePourVous")
+                    </h2>
+                </div>
+                <a href="/Catalogue" class="btn btn-outline-primary">@T.Get("VoirTout") <i class="fas fa-arrow-right ms-1"></i></a>
+            </div>
+            <div class="row g-4">
+                @foreach (var p in recommandations)
+                {
+                    <div class="col-6 col-md-4 col-lg-2">
+                        @await Html.PartialAsync("_CarteProduit", p)
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Banner IA (réservée aux utilisateurs connectés) -->
+@if ((bool)(ViewBag.EstConnecte ?? false))
+{
+    <section class="py-5 bg-primary text-white">
+        <div class="container text-center">
+            <i class="fas fa-robot fa-3x mb-3 text-warning"></i>
+            <h2 class="fw-bold">@T.Get("RecoIA")</h2>
+            <p class="lead opacity-90 mb-4">@T.Get("RecoIASous")</p>
+            <a href="@(recommandations.Any() ? "#mes-recommandations" : "/Catalogue")" class="btn btn-warning btn-lg fw-semibold">
+                <i class="fas fa-magic me-2"></i>@T.Get("DecouvrirReco")
+            </a>
+        </div>
+    </section>
+}
+
+<!-- Tendances -->
+@if (tendances.Any())
+{
+    <section class="py-5">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1"><i class="fas fa-fire text-danger me-2"></i>@T.Get("Tendances")</h2>
+                    <p class="text-muted mb-0">@T.Get("PlusPopulaires")</p>
+                </div>
+                <a href="/Catalogue?tri=ventes" class="btn btn-outline-danger">@T.Get("VoirPlus")</a>
+            </div>
+            <div class="row g-4">
+                @foreach (var p in tendances)
+                {
+                    <div class="col-6 col-md-4 col-lg-2">
+                        @await Html.PartialAsync("_CarteProduit", p)
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Témoignages clients -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <span class="badge bg-warning text-dark mb-2 px-3 py-2">⭐ Avis vérifiés</span>
+            <h2 class="fw-bold">Ils nous font confiance</h2>
+            <p class="text-muted">Découvrez l'expérience de nos clients</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4" data-aos="fade-up">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="text-warning mb-2">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <p class="mb-3">« Excellent service, livraison rapide à Salé. Le bureau direction est de très bonne qualité, exactement comme sur les photos. Je recommande vivement SODIV Bureau. »</p>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:42px;height:42px;">YA</div>
+                            <div>
+                                <div class="fw-bold small">Youssef A.</div>
+                                <small class="text-muted">Directeur, Casablanca</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4" data-aos="fade-up">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="text-warning mb-2">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        </div>
+                        <p class="mb-3">« Nous équipons notre école avec SODIV Bureau depuis 2 ans. Toujours à l'écoute, des prix compétitifs et un excellent SAV. Un vrai partenaire de confiance. »</p>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:42px;height:42px;">FB</div>
+                            <div>
+                                <div class="fw-bold small">Fatima B.</div>
+                                <small class="text-muted">Directrice d'école, Rabat</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4" data-aos="fade-up">
+                <div class="card border-0 shadow-sm h-100 hover-lift">
+                    <div class="card-body p-4">
+                        <div class="text-warning mb-2">
+                            <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                        </div>
+                        <p class="mb-3">« Achat d'imprimante pour mon cabinet. Conseils pertinents, prix imbattable et installation faite sur place. Je suis client à vie. »</p>
+                        <div class="d-flex align-items-center">
+                            <div class="bg-info text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:42px;height:42px;">KE</div>
+                            <div>
+                                <div class="fw-bold small">Karim E.</div>
+                                <small class="text-muted">Architecte, Salé</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="/Home/APropos" class="btn btn-outline-primary">En savoir plus sur SODIV Bureau <i class="fas fa-arrow-right ms-1"></i></a>
+        </div>
+    </div>
+</section>

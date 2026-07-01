@@ -1,0 +1,175 @@
+@model TechVisionMaroc.Models.Utilisateur
+
+@{
+    ViewData["Title"] = "Modifier le client";
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="@ViewBag.AdminBase/clients" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-user-edit me-2 text-info"></i>Modifier le client — @Model.Prenom @Model.Nom
+            </h4>
+            <span class="badge bg-secondary ms-2">#@Model.Id</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:720px">
+    <form method="post" action="@ViewBag.AdminBase/clients/modifier/@Model.Id">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+
+            <!-- Informations personnelles -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold border-0">
+                        <i class="fas fa-user text-primary me-2"></i>Informations personnelles
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+                                <input type="text" name="prenom" class="form-control" value="@Model.Prenom" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+                                <input type="text" name="nom" class="form-control" value="@Model.Nom" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control" value="@Model.Email" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Téléphone</label>
+                                <input type="tel" name="telephone" class="form-control" value="@Model.Telephone" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Ville</label>
+                                <input type="text" name="ville" class="form-control" value="@Model.Ville" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Date de naissance</label>
+                                <input type="date" name="dateNaissance" class="form-control"
+                                       value="@(Model.DateNaissance.HasValue ? Model.DateNaissance.Value.ToString("yyyy-MM-dd") : "")" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Adresse</label>
+                                <input type="text" name="adresse" class="form-control" value="@Model.Adresse" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mot de passe -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm border-start border-4 border-danger">
+                    <div class="card-header bg-white fw-semibold border-0">
+                        <i class="fas fa-key text-danger me-2"></i>Changer le mot de passe
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nouveau mot de passe</label>
+                                <div class="input-group">
+                                    <input type="password" name="nouveauMotDePasse" id="mdpClient" class="form-control"
+                                           placeholder="Laisser vide pour ne pas changer" minlength="8" />
+                                    <button type="button" class="btn btn-outline-secondary" onclick="toggleMdp('mdpClient','eyeClient')">
+                                        <i class="fas fa-eye" id="eyeClient"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Minimum 8 caractères. Laissez vide pour conserver l'actuel.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compte & accès -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold border-0">
+                        <i class="fas fa-shield-alt text-warning me-2"></i>Compte & accès
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Rôle</label>
+                                <select name="role" class="form-select">
+                                    @Html.Raw($"<option value=\"Client\"{(Model.Role == "Client" ? " selected" : "")}>Client</option>")
+                                    @Html.Raw($"<option value=\"Admin\"{(Model.Role == "Admin" ? " selected" : "")}>Admin</option>")
+                                    @Html.Raw($"<option value=\"SuperAdmin\"{(Model.Role == "SuperAdmin" ? " selected" : "")}>Super Admin</option>")
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Statut du compte</label>
+                                <div class="d-flex gap-3 mt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="estActif" value="true" id="actif"
+                                               @(Model.EstActif ? "checked" : "") />
+                                        <label class="form-check-label text-success fw-semibold" for="actif">
+                                            <i class="fas fa-check-circle me-1"></i>Actif
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="estActif" value="false" id="bloque"
+                                               @(!Model.EstActif ? "checked" : "") />
+                                        <label class="form-check-label text-danger fw-semibold" for="bloque">
+                                            <i class="fas fa-ban me-1"></i>Bloqué
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informations lecture seule -->
+                        <hr />
+                        <div class="row g-3 text-muted small">
+                            <div class="col-md-4">
+                                <i class="fas fa-calendar me-1"></i>
+                                Inscrit le @Model.DateInscription.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                            <div class="col-md-4">
+                                <i class="fas fa-clock me-1"></i>
+                                Dernière connexion :
+                                @(Model.DerniereConnexion.HasValue
+                                    ? Model.DerniereConnexion.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    : "Jamais")
+                            </div>
+                            <div class="col-md-4">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Tentatives échouées : @Model.TentativesEchouees
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                    <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                </button>
+                <a href="@ViewBag.AdminBase/clients" class="btn btn-outline-secondary btn-lg">Annuler</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleMdp(inputId, iconId) {
+    var input = document.getElementById(inputId);
+    var icon  = document.getElementById(iconId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>

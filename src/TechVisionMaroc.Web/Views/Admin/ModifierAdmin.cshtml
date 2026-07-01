@@ -1,0 +1,132 @@
+@model TechVisionMaroc.Models.Utilisateur
+
+@{
+    ViewData["Title"] = "Modifier l'administrateur";
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="@ViewBag.AdminBase/admins" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-user-edit me-2 text-warning"></i>Modifier l'admin — @Model.Prenom @Model.Nom
+            </h4>
+            <span class="badge bg-warning text-dark ms-2">#@Model.Id</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:620px">
+    <form method="post" action="@ViewBag.AdminBase/admins/modifier/@Model.Id">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+
+            <!-- Informations -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold border-0">
+                        <i class="fas fa-user-tie text-warning me-2"></i>Informations de l'administrateur
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+                                <input type="text" name="prenom" class="form-control" value="@Model.Prenom" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+                                <input type="text" name="nom" class="form-control" value="@Model.Nom" required />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control" value="@Model.Email" required />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mot de passe -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold border-0">
+                        <i class="fas fa-key text-secondary me-2"></i>Changer le mot de passe
+                    </div>
+                    <div class="card-body">
+                        <label class="form-label fw-semibold">Nouveau mot de passe</label>
+                        <div class="input-group">
+                            <input type="password" name="nouveauMotDePasse" id="mdp" class="form-control"
+                                   placeholder="Laisser vide pour ne pas changer" minlength="8" />
+                            <button type="button" class="btn btn-outline-secondary" onclick="toggleMdp('mdp','eyeIcon')">
+                                <i class="fas fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Minimum 8 caractères. Laissez vide pour conserver l'actuel.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statut -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-semibold border-0">
+                        <i class="fas fa-shield-alt text-warning me-2"></i>Statut du compte
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="estActif" value="true" id="actif"
+                                       @(Model.EstActif ? "checked" : "") />
+                                <label class="form-check-label text-success fw-semibold" for="actif">
+                                    <i class="fas fa-check-circle me-1"></i>Actif
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="estActif" value="false" id="bloque"
+                                       @(!Model.EstActif ? "checked" : "") />
+                                <label class="form-check-label text-danger fw-semibold" for="bloque">
+                                    <i class="fas fa-ban me-1"></i>Bloqué
+                                </label>
+                            </div>
+                        </div>
+                        <hr />
+                        <div class="text-muted small">
+                            <i class="fas fa-calendar me-1"></i>
+                            Créé le @Model.DateInscription.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            &nbsp;·&nbsp;
+                            <i class="fas fa-clock me-1"></i>
+                            Dernière connexion :
+                            @(Model.DerniereConnexion.HasValue
+                                ? Model.DerniereConnexion.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                : "Jamais")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-warning btn-lg fw-bold">
+                    <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                </button>
+                <a href="@ViewBag.AdminBase/admins" class="btn btn-outline-secondary btn-lg">Annuler</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleMdp(inputId, iconId) {
+    var input = document.getElementById(inputId);
+    var icon  = document.getElementById(iconId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>

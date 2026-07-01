@@ -1,0 +1,67 @@
+@model TechVisionMaroc.Models.Conversation
+@{ ViewData["Title"] = Model.Sujet; }
+
+<div class="container py-5">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/Compte" class="text-decoration-none">Mon compte</a></li>
+            <li class="breadcrumb-item"><a href="/Compte/messages" class="text-decoration-none">Messages</a></li>
+            <li class="breadcrumb-item active">@Model.Sujet</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-comments me-2"></i>@Model.Sujet</h5>
+            <small class="opacity-75">Conversation #@Model.Id · Créée le @Model.DateCreation.ToLocalTime().ToString("dd/MM/yyyy")</small>
+        </div>
+        <div class="card-body p-0">
+            <div id="messagesContainer" style="height:500px;overflow-y:auto;padding:1.5rem;background:#f8fafc;">
+                @foreach (var m in Model.Messages.OrderBy(x => x.DateEnvoi))
+                {
+                    var estClient = m.Expediteur == TechVisionMaroc.Models.ExpediteurMessage.Client;
+                    var estSysteme = m.Expediteur == TechVisionMaroc.Models.ExpediteurMessage.Systeme;
+                    <div class="d-flex mb-3 @(estClient ? "justify-content-end" : "justify-content-start")">
+                        <div class="message-bubble @(estClient ? "msg-client" : estSysteme ? "msg-system" : "msg-admin")">
+                            @if (!estClient && !estSysteme)
+                            {
+                                <small class="d-block fw-bold mb-1"><i class="fas fa-user-tie me-1"></i>SODIV Support</small>
+                            }
+                            <div>@m.Contenu</div>
+                            <small class="d-block mt-1 opacity-75 text-end">@m.DateEnvoi.ToLocalTime().ToString("HH:mm")</small>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+        @if (Model.Statut != TechVisionMaroc.Models.StatutConversation.Fermee)
+        {
+            <div class="card-footer bg-white">
+                <form method="post" action="/Compte/messages/@Model.Id/repondre" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="text" name="contenu" class="form-control" placeholder="Tapez votre message..." required maxlength="4000" />
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+.message-bubble {
+    max-width: 70%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    font-size: .95rem;
+}
+.msg-client { background: linear-gradient(135deg, #0d6efd, #0a58ca); color: #fff; border-bottom-right-radius: 4px; }
+.msg-admin  { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; }
+.msg-system { background: #fef3c7; color: #92400e; max-width: 80%; text-align: center; font-style: italic; }
+</style>
+
+<script>
+// Scroll auto en bas
+const c = document.getElementById('messagesContainer');
+if (c) c.scrollTop = c.scrollHeight;
+</script>

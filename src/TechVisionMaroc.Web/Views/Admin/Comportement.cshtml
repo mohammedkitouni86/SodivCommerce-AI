@@ -1,0 +1,197 @@
+@using TechVisionMaroc.Models
+@using TechVisionMaroc.Services
+@{
+    ViewData["Title"] = "Tracking comportemental";
+    Layout = "_Layout";
+    var jours      = (int)ViewBag.Jours;
+    var ent        = (StatsEntonnoir)ViewBag.Entonnoir;
+    var top        = (List<StatTopProduit>)ViewBag.TopProduits;
+    var appareils  = (List<StatRepartition>)ViewBag.Appareils;
+    var parJour    = (Dictionary<string,int>)ViewBag.ParJour;
+    var recents    = (List<EvenementComportement>)ViewBag.Recents;
+    string adminBase = (string)ViewBag.AdminBase;
+
+    int Pct(int n, int d) => d <= 0 ? 0 : (int)Math.Round(n * 100.0 / d);
+    int totalAppareils = appareils.Sum(a => a.Nb);
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="fas fa-route text-primary me-2"></i>Tracking comportemental</h2>
+            <p class="text-muted small mb-0">Analyse des parcours utilisateurs (@jours derniers jours)</p>
+        </div>
+        <div class="btn-group">
+            @foreach (var j in new[] { 7, 30, 90 })
+            {
+                <a href="@adminBase/comportement?jours=@j" class="btn btn-sm @(jours==j?"btn-primary":"btn-outline-primary")">@j j</a>
+            }
+        </div>
+    </div>
+
+    <!-- Entonnoir -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white"><strong><i class="fas fa-filter me-2"></i>Entonnoir de conversion</strong></div>
+        <div class="card-body">
+            <div class="row text-center">
+                @{
+                    var etapes = new[] {
+                        ("Visiteurs",     ent.Visiteurs,    "users",         "primary"),
+                        ("Vue produit",   ent.VueProduit,   "eye",           "info"),
+                        ("Panier",        ent.AjoutPanier,  "shopping-cart", "warning"),
+                        ("Checkout",      ent.Checkout,     "credit-card",   "secondary"),
+                        ("Achat",         ent.Achats,       "check-circle",  "success")
+                    };
+                }
+                @foreach (var (label, val, icon, color) in etapes)
+                {
+                    <div class="col">
+                        <div class="border rounded p-3 h-100">
+                            <i class="fas fa-@icon fa-2x text-@color mb-2"></i>
+                            <div class="h3 mb-0">@val</div>
+                            <div class="small text-muted">@label</div>
+                            <div class="small text-@color">@Pct(val, ent.Visiteurs)%</div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="row text-center mt-3">
+                <div class="col-md-3"><span class="text-muted small">Taux vue produit :</span> <strong>@Pct(ent.VueProduit, ent.Visiteurs)%</strong></div>
+                <div class="col-md-3"><span class="text-muted small">Vue → Panier :</span> <strong>@Pct(ent.AjoutPanier, ent.VueProduit)%</strong></div>
+                <div class="col-md-3"><span class="text-muted small">Panier → Checkout :</span> <strong>@Pct(ent.Checkout, ent.AjoutPanier)%</strong></div>
+                <div class="col-md-3"><span class="text-muted small">Checkout → Achat :</span> <strong class="text-success">@Pct(ent.Achats, ent.Checkout)%</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Top produits vus -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white"><strong><i class="fas fa-fire me-2"></i>Top produits les plus consultés</strong></div>
+                <div class="card-body p-0">
+                    @if (!top.Any())
+                    {
+                        <div class="p-4 text-center text-muted">Aucune donnée pour la période.</div>
+                    }
+                    else
+                    {
+                        var max = top.Max(t => t.NbVues);
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light"><tr><th>#</th><th>Produit</th><th class="text-end">Vues</th></tr></thead>
+                            <tbody>
+                            @{ int idx = 1; }
+                            @foreach (var p in top)
+                            {
+                                <tr>
+                                    <td>@idx</td>
+                                    <td>
+                                        <a href="/Produit/Details/@p.ProduitId" class="text-decoration-none">@p.Nom</a>
+                                        <div class="progress mt-1" style="height:4px;">
+                                            <div class="progress-bar bg-info" style="width:@Pct(p.NbVues, max)%"></div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end"><span class="badge bg-info">@p.NbVues</span></td>
+                                </tr>
+                                idx++;
+                            }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition appareils -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white"><strong><i class="fas fa-mobile-alt me-2"></i>Répartition par appareil</strong></div>
+                <div class="card-body">
+                    @if (!appareils.Any())
+                    {
+                        <div class="text-center text-muted py-4">Aucune donnée.</div>
+                    }
+                    else
+                    {
+                        foreach (var a in appareils)
+                        {
+                            var icon = a.Cle switch {
+                                "Mobile"     => "mobile-alt",
+                                "Tablette"   => "tablet-alt",
+                                "Ordinateur" => "desktop",
+                                "Bot"        => "robot",
+                                _            => "question-circle"
+                            };
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span><i class="fas fa-@icon me-2 text-primary"></i><strong>@a.Cle</strong></span>
+                                    <span>@a.Nb (@Pct(a.Nb, totalAppareils)%)</span>
+                                </div>
+                                <div class="progress" style="height:10px;">
+                                    <div class="progress-bar" style="width:@Pct(a.Nb, totalAppareils)%"></div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Événements par jour -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-white"><strong><i class="fas fa-chart-line me-2"></i>Volume d'événements par jour</strong></div>
+        <div class="card-body">
+            @if (!parJour.Any())
+            {
+                <div class="text-center text-muted py-3">Aucune donnée.</div>
+            }
+            else
+            {
+                var maxJ = parJour.Values.Max();
+                <div class="d-flex align-items-end" style="height:200px; gap:6px;">
+                    @foreach (var (date, nb) in parJour)
+                    {
+                        var h = maxJ > 0 ? (int)(nb * 180.0 / maxJ) : 0;
+                        <div class="flex-fill text-center" title="@date : @nb événements">
+                            <div class="bg-primary rounded-top mx-auto" style="width:100%; height:@(h)px;"></div>
+                            <div class="small text-muted mt-1" style="font-size:.7rem;">@date</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Événements récents -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-white"><strong><i class="fas fa-stream me-2"></i>50 derniers événements</strong></div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th><th>Type</th><th>Cible</th><th>Page</th><th>Appareil</th><th>Session</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var e in recents)
+                    {
+                        <tr>
+                            <td class="small">@e.Date.ToLocalTime().ToString("dd/MM HH:mm:ss")</td>
+                            <td><span class="badge bg-secondary">@e.Type</span></td>
+                            <td class="small">
+                                @if (e.CibleType != null) { <text>@e.CibleType #@e.CibleId</text> }
+                                @if (!string.IsNullOrWhiteSpace(e.Etiquette)) { <div class="text-muted">@e.Etiquette</div> }
+                            </td>
+                            <td class="small text-truncate" style="max-width:200px;">@e.Page</td>
+                            <td><span class="small">@e.Appareil</span></td>
+                            <td class="small text-muted text-truncate" style="max-width:120px;">@e.SessionId</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

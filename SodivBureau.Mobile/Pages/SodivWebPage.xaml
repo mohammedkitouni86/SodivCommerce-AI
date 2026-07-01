@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SodivBureau.Mobile.Pages.SodivWebPage"
+             Title="SODIV Bureau"
+             BackgroundColor="#0d6efd"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+
+        <!-- WebView pleine page (chargement du site SODIV) -->
+        <WebView x:Name="webView"
+                 HorizontalOptions="Fill"
+                 VerticalOptions="Fill"
+                 Navigating="WebView_Navigating"
+                 Navigated="WebView_Navigated" />
+
+        <!-- Splash écran de chargement (cache après 1er chargement réussi) -->
+        <Grid x:Name="splashScreen"
+              BackgroundColor="#0d6efd"
+              IsVisible="True">
+            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20">
+                <Image Source="dotnet_bot.png"
+                       HeightRequest="120"
+                       WidthRequest="120" />
+                <Label Text="SODIV Bureau"
+                       FontSize="36"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label Text="Tout pour le bureau"
+                       FontSize="16"
+                       TextColor="White"
+                       Opacity="0.85"
+                       HorizontalOptions="Center" />
+                <ActivityIndicator IsRunning="True"
+                                   Color="White"
+                                   Margin="0,20,0,0" />
+                <Label x:Name="loadingLabel"
+                       Text="Chargement..."
+                       FontSize="14"
+                       TextColor="White"
+                       Opacity="0.7"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Bouton flottant retour (apparaît si on a navigué) -->
+        <Button x:Name="btnBack"
+                Text="←"
+                FontSize="22"
+                FontAttributes="Bold"
+                BackgroundColor="#0d6efd"
+                TextColor="White"
+                CornerRadius="25"
+                WidthRequest="50"
+                HeightRequest="50"
+                Padding="0"
+                Margin="15,40,0,0"
+                HorizontalOptions="Start"
+                VerticalOptions="Start"
+                IsVisible="False"
+                Clicked="OnBackClicked" />
+
+    </Grid>
+
+</ContentPage>

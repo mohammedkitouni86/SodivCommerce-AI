@@ -1,0 +1,166 @@
+@model TechVisionMaroc.Models.Utilisateur
+@{
+    ViewData["Title"] = "Mon programme fidélité";
+    int solde      = ViewBag.Solde ?? 0;
+    int expirant   = ViewBag.Expirant ?? 0;
+    decimal valPt  = ViewBag.ValeurPoint ?? 0.10m;
+    decimal pctMax = ViewBag.PctMax ?? 30m;
+    var niveau     = (TechVisionMaroc.Services.NiveauFidelite)(ViewBag.Niveau ?? TechVisionMaroc.Services.NiveauFidelite.Bronze);
+    var hist       = ViewBag.Historique as List<TechVisionMaroc.Models.TransactionFidelite> ?? new();
+
+    string niveauCouleur = niveau switch
+    {
+        TechVisionMaroc.Services.NiveauFidelite.Platine => "primary",
+        TechVisionMaroc.Services.NiveauFidelite.Or      => "warning",
+        TechVisionMaroc.Services.NiveauFidelite.Argent  => "secondary",
+        _ => "dark"
+    };
+    string niveauIcone = niveau switch
+    {
+        TechVisionMaroc.Services.NiveauFidelite.Platine => "gem",
+        TechVisionMaroc.Services.NiveauFidelite.Or      => "crown",
+        TechVisionMaroc.Services.NiveauFidelite.Argent  => "medal",
+        _ => "shield-halved"
+    };
+
+    var seuilSuivant = niveau switch
+    {
+        TechVisionMaroc.Services.NiveauFidelite.Bronze => 2000m,
+        TechVisionMaroc.Services.NiveauFidelite.Argent => 8000m,
+        TechVisionMaroc.Services.NiveauFidelite.Or     => 20000m,
+        _ => 0m
+    };
+}
+
+<div class="container py-5">
+    <h1 class="h3 fw-bold mb-4">
+        <i class="fas fa-star text-warning me-2"></i>Mon programme fidélité
+    </h1>
+
+    <div class="row g-4 mb-4">
+        <!-- Solde -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-warning text-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-coins fa-3x mb-2"></i>
+                    <div class="fw-bold display-5">@solde</div>
+                    <div class="fw-semibold">points fidélité</div>
+                    <div class="small mt-2">≈ @((solde * valPt).ToString("N2")) MAD de réduction</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Niveau -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-@niveauCouleur text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-@niveauIcone fa-3x mb-2"></i>
+                    <div class="fw-bold h4">@niveau</div>
+                    <div class="small">Niveau actuel</div>
+                    @if (seuilSuivant > 0)
+                    {
+                        <div class="small mt-2 text-white-50">
+                            Continuez vos achats pour progresser !
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="small mt-2 text-white-50">Niveau maximum atteint 🎉</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Expirent bientôt -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 @(expirant > 0 ? "border-danger" : "")">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-3x mb-2 @(expirant > 0 ? "text-danger" : "text-muted")"></i>
+                    <div class="fw-bold display-5 @(expirant > 0 ? "text-danger" : "")">@expirant</div>
+                    <div class="fw-semibold">points expirent sous 60j</div>
+                    @if (expirant > 0)
+                    {
+                        <div class="small mt-2 text-muted">Utilisez-les vite sur une commande !</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment ça marche -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="fw-bold"><i class="fas fa-info-circle text-primary me-2"></i>Comment ça marche ?</h5>
+            <div class="row g-3 mt-2">
+                <div class="col-md-3 text-center">
+                    <i class="fas fa-shopping-bag fa-2x text-primary mb-2"></i>
+                    <div class="fw-semibold">1 MAD dépensé</div>
+                    <small class="text-muted">= 1 point fidélité</small>
+                </div>
+                <div class="col-md-3 text-center">
+                    <i class="fas fa-piggy-bank fa-2x text-success mb-2"></i>
+                    <div class="fw-semibold">10 points</div>
+                    <small class="text-muted">= 1 MAD de réduction</small>
+                </div>
+                <div class="col-md-3 text-center">
+                    <i class="fas fa-percent fa-2x text-warning mb-2"></i>
+                    <div class="fw-semibold">Jusqu'à -@pctMax.ToString("0")%</div>
+                    <small class="text-muted">par commande</small>
+                </div>
+                <div class="col-md-3 text-center">
+                    <i class="fas fa-hourglass-half fa-2x text-danger mb-2"></i>
+                    <div class="fw-semibold">Validité 12 mois</div>
+                    <small class="text-muted">à partir de l'achat</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light fw-semibold">
+            <i class="fas fa-history me-2"></i>Historique de mes points
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th class="text-end">Points</th>
+                        <th>Expire le</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!hist.Any())
+                {
+                    <tr><td colspan="5" class="text-center text-muted py-4">Aucune transaction pour le moment.</td></tr>
+                }
+                else
+                {
+                    foreach (var t in hist)
+                    {
+                        var couleur = t.Points >= 0 ? "success" : "danger";
+                        var icone   = t.Type switch
+                        {
+                            TechVisionMaroc.Models.TypeTransactionFidelite.Gagne   => "fa-plus-circle",
+                            TechVisionMaroc.Models.TypeTransactionFidelite.Utilise => "fa-minus-circle",
+                            TechVisionMaroc.Models.TypeTransactionFidelite.Expire  => "fa-hourglass-end",
+                            TechVisionMaroc.Models.TypeTransactionFidelite.Bonus   => "fa-gift",
+                            _ => "fa-undo"
+                        };
+                        <tr>
+                            <td class="text-muted small">@t.Date.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><i class="fas @icone text-@couleur me-1"></i>@t.Type</td>
+                            <td class="small">@t.Description</td>
+                            <td class="text-end fw-bold text-@couleur">@(t.Points > 0 ? "+" : "")@t.Points</td>
+                            <td class="text-muted small">@(t.DateExpiration?.ToLocalTime().ToString("dd/MM/yyyy") ?? "—")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

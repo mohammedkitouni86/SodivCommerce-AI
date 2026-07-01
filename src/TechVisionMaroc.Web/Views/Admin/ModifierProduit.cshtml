@@ -1,0 +1,349 @@
+@model TechVisionMaroc.Models.Produit
+
+@{
+    ViewData["Title"] = "Modifier le produit";
+    var categories = ViewBag.Categories as List<TechVisionMaroc.Models.Categorie> ?? new();
+    var imageActuelle = string.IsNullOrEmpty(Model.ImageUrl) ? "/images/placeholder.svg" : Model.ImageUrl;
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="@ViewBag.AdminBase/produits" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-edit me-2 text-warning"></i>Modifier le produit #@Model.Id
+            </h4>
+            <span class="badge bg-secondary ms-2">Réf : @Model.Reference</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:960px">
+    <form method="post" action="@ViewBag.AdminBase/produits/modifier/@Model.Id" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+
+            <!-- Colonne gauche : aperçu image -->
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3 sticky-top" style="top:80px">
+                    <img id="previewImg" src="@imageActuelle"
+                         class="img-fluid rounded mb-3"
+                         style="max-height:160px;object-fit:contain;background:#f8f9fa"
+                         alt="@Model.Nom"
+                         onerror="this.src='/images/placeholder.svg'" />
+                    <p class="text-muted small mb-1">Aperçu image</p>
+                    <hr class="my-2" />
+                    <div class="text-start small">
+                        <div class="text-muted">Créé le</div>
+                        <div>@Model.DateCreation.ToString("dd/MM/yyyy")</div>
+                        <div class="text-muted mt-2">Ventes / Avis</div>
+                        <div>@Model.NombreVentes ventes · @Model.NombreAvis avis</div>
+                        @if (Model.NoteMoyenne > 0)
+                        {
+                            <div class="text-muted mt-2">Note</div>
+                            <div>@Model.NoteMoyenne.ToString("0.0") / 5</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colonne droite : formulaire -->
+            <div class="col-md-9">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+
+                        @if (TempData["Error"] != null)
+                        {
+                            <div class="alert alert-danger">@TempData["Error"]</div>
+                        }
+
+                        <!-- Nom & Référence -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Nom du produit <span class="text-danger">*</span></label>
+                                <input type="text" name="nom" class="form-control"
+                                       value="@Model.Nom" required maxlength="200"
+                                       placeholder="Ex: HP EliteBook 840 G10" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Référence</label>
+                                <input type="text" class="form-control bg-light"
+                                       value="@Model.Reference" readonly />
+                            </div>
+                        </div>
+
+                        @{
+                            // Construire la liste hiérarchique complète (tous les niveaux) avec indentation.
+                            var optionsCat = new List<(int Id, string Label)>();
+                            void AjouterCats(int? parentId, int niveau)
+                            {
+                                foreach (var c in categories.Where(x => x.ParentId == parentId).OrderBy(x => x.Nom))
+                                {
+                                    var prefixe = niveau == 0 ? "" : string.Concat(Enumerable.Repeat("— ", niveau));
+                                    optionsCat.Add((c.Id, prefixe + c.Nom));
+                                    AjouterCats(c.Id, niveau + 1);
+                                }
+                            }
+                            AjouterCats(null, 0);
+                        }
+
+                        <!-- Marque & Catégorie -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Marque <span class="text-danger">*</span></label>
+                                <input type="text" name="marque" class="form-control"
+                                       value="@Model.Marque" required placeholder="Ex: HP" />
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Catégorie <span class="text-danger">*</span></label>
+                                <select name="categorieId" id="categorieSelect" class="form-select" required>
+                                    <option value="">-- Choisir --</option>
+                                    @foreach (var o in optionsCat)
+                                    {
+                                        if (o.Id == Model.CategorieId)
+                                        {
+                                            <option value="@o.Id" selected>@o.Label</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@o.Id">@o.Label</option>
+                                        }
+                                    }
+                                </select>
+                                <div class="form-text">
+                                    Liste complète (3 niveaux). La catégorie actuelle est présélectionnée — laissez-la pour ne rien changer.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold mb-0">Description <span class="text-danger">*</span></label>
+                                <button type="button" id="btnGenererDesc" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-wand-magic-sparkles me-1"></i>
+                                    <span class="lbl">Régénérer avec l'IA</span>
+                                </button>
+                            </div>
+                            <textarea name="description" id="descriptionField" class="form-control" rows="5"
+                                      required maxlength="2000"
+                                      placeholder="Description détaillée du produit...">@Model.Description</textarea>
+                        </div>
+
+                        <!-- Prix & Stock -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Prix normal (MAD) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" name="prix" class="form-control"
+                                           value="@Model.Prix.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                           step="0.01" min="0" required />
+                                    <span class="input-group-text">MAD</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Prix promo (MAD)</label>
+                                <div class="input-group">
+                                    <input type="number" name="prixPromo" class="form-control"
+                                           value="@(Model.PrixPromo.HasValue ? Model.PrixPromo.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "")"
+                                           step="0.01" min="0"
+                                           placeholder="Vide = pas de promo" />
+                                    <span class="input-group-text">MAD</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Stock <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" name="stock" class="form-control"
+                                           value="@Model.Stock" min="0" required />
+                                    <span class="input-group-text">unités</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Taux TVA</label>
+                                <select name="tauxTVA" class="form-select">
+                                    @foreach (var t in new[] { 20m, 14m, 10m, 7m, 0m })
+                                    {
+                                        if (Model.TauxTVA == t)
+                                        {
+                                            <option value="@t" selected>@t.ToString("0.##")%</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@t">@t.ToString("0.##")%</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Photos (galerie : 4 images dans l'ordre) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-images me-1 text-warning"></i>Photos du produit
+                                <span class="text-muted small fw-normal">— 4 images, dans l'ordre d'affichage</span>
+                            </label>
+                            <div class="form-text mb-3">
+                                La <strong>Photo 1</strong> est l'image principale (vignettes, listes, partages).
+                                Les photos 2 à 4 complètent la galerie sur la fiche produit.
+                                Pour chaque emplacement : choisissez un fichier <em>ou</em> saisissez une URL. Laissez vide pour ne pas afficher.
+                            </div>
+
+                            <div class="row g-3">
+                                @{
+                                    var slots = new[] {
+                                        (Num: 1, Url: Model.ImageUrl,        FileName: "imageFile",  UrlName: "imageUrl",  Principale: true),
+                                        (Num: 2, Url: Model.Image2 ?? "",    FileName: "imageFile2", UrlName: "imageUrl2", Principale: false),
+                                        (Num: 3, Url: Model.Image3 ?? "",    FileName: "imageFile3", UrlName: "imageUrl3", Principale: false),
+                                        (Num: 4, Url: Model.Image4 ?? "",    FileName: "imageFile4", UrlName: "imageUrl4", Principale: false),
+                                    };
+                                }
+                                @foreach (var s in slots)
+                                {
+                                    var apercu = string.IsNullOrEmpty(s.Url) ? "/images/placeholder.svg" : s.Url;
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-3 h-100">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <span class="badge @(s.Principale ? "bg-warning text-dark" : "bg-secondary")">Photo @s.Num</span>
+                                                @if (s.Principale) { <span class="small text-muted">Image principale</span> }
+                                            </div>
+                                            <div class="text-center mb-2">
+                                                <img src="@apercu" data-slot-preview="@s.Num"
+                                                     class="img-fluid rounded"
+                                                     style="max-height:120px;object-fit:contain;background:#f8f9fa"
+                                                     onerror="this.src='/images/placeholder.svg'" />
+                                            </div>
+                                            <input type="file" name="@s.FileName" data-slot-file="@s.Num"
+                                                   class="form-control form-control-sm mb-2"
+                                                   accept=".jpg,.jpeg,.png,.gif,.webp,.svg" />
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text"><i class="fas fa-link"></i></span>
+                                                <input type="text" name="@s.UrlName" data-slot-url="@s.Num"
+                                                       class="form-control" value="@s.Url"
+                                                       placeholder="/images/... ou https://..." />
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Statut -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="card border rounded p-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="estActif" id="estActif" value="true"
+                                               @(Model.EstActif ? "checked" : "") />
+                                        <label class="form-check-label fw-semibold" for="estActif">
+                                            <i class="fas fa-eye me-1 text-success"></i>Produit actif
+                                        </label>
+                                        <div class="text-muted small">Visible dans la boutique</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border rounded p-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="estVedette" id="estVedette" value="true"
+                                               @(Model.EstVedette ? "checked" : "") />
+                                        <label class="form-check-label fw-semibold" for="estVedette">
+                                            <i class="fas fa-star me-1 text-warning"></i>Produit vedette
+                                        </label>
+                                        <div class="text-muted small">Mis en avant sur l'accueil</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons -->
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="submit" class="btn btn-warning btn-lg px-5">
+                                <i class="fas fa-save me-2"></i>Enregistrer les modifications
+                            </button>
+                            <a href="@ViewBag.AdminBase/produits" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </a>
+                            <a href="/Produit/Details/@Model.Id" target="_blank"
+                               class="btn btn-outline-primary btn-lg ms-auto">
+                                <i class="fas fa-external-link-alt me-1"></i>Voir en boutique
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+// Aperçu par emplacement (1 à 4) : fichier prioritaire, sinon URL.
+// L'emplacement 1 met aussi à jour l'aperçu principal de gauche.
+(function () {
+    const mainPreview = document.getElementById('previewImg');
+    document.querySelectorAll('[data-slot-preview]').forEach(function (img) {
+        const num  = img.getAttribute('data-slot-preview');
+        const file = document.querySelector('[data-slot-file="' + num + '"]');
+        const url  = document.querySelector('[data-slot-url="' + num + '"]');
+
+        function setSrc(src) {
+            img.src = src;
+            if (num === '1' && mainPreview) mainPreview.src = src;
+        }
+        if (url) url.addEventListener('input', function () {
+            if (this.value.trim()) setSrc(this.value.trim());
+        });
+        if (file) file.addEventListener('change', function () {
+            const f = this.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = e => { setSrc(e.target.result); if (url) url.value = ''; };
+            reader.readAsDataURL(f);
+        });
+    });
+})();
+
+// Génération description IA
+document.getElementById('btnGenererDesc')?.addEventListener('click', async function () {
+    const nom    = document.querySelector('[name="nom"]')?.value.trim();
+    const marque = document.querySelector('[name="marque"]')?.value.trim();
+    const catId  = document.querySelector('[name="categorieId"]')?.value;
+    const prix   = parseFloat(document.querySelector('[name="prix"]')?.value) || null;
+    if (!nom || !marque) { alert("Veuillez d'abord remplir le Nom et la Marque."); return; }
+
+    const champ = document.getElementById('descriptionField');
+    if (champ.value.trim() && !confirm('Remplacer la description actuelle ?')) return;
+
+    const btn = this;
+    const lbl = btn.querySelector('.lbl');
+    const txtOriginal = lbl.textContent;
+    btn.disabled = true;
+    lbl.textContent = 'Génération en cours…';
+    btn.querySelector('i').className = 'fas fa-spinner fa-spin me-1';
+
+    try {
+        const res = await fetch('/api/admin/ia/description', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nom, marque, categorieId: catId ? parseInt(catId) : null, prix })
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.erreur || 'Erreur génération.'); return; }
+        champ.value = data.description;
+    } catch {
+        alert('Connexion impossible au service IA.');
+    } finally {
+        btn.disabled = false;
+        lbl.textContent = txtOriginal;
+        btn.querySelector('i').className = 'fas fa-wand-magic-sparkles me-1';
+    }
+});
+</script>
+}

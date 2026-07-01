@@ -1,0 +1,91 @@
+@model TechVisionMaroc.Models.Categorie
+
+@{
+    ViewData["Title"] = "Modifier la catégorie";
+    var parents = ViewBag.Parents as List<TechVisionMaroc.Models.Categorie> ?? new();
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="@ViewBag.AdminBase/categories" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-edit me-2 text-primary"></i>Modifier — @Model.Nom
+            </h4>
+            <span class="badge bg-secondary">#@Model.Id</span>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:600px">
+    <form method="post" action="@ViewBag.AdminBase/categories/modifier/@Model.Id">
+        @Html.AntiForgeryToken()
+
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold border-0">
+                <i class="fas fa-tags text-primary me-2"></i>Informations
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+                    <input type="text" name="nom" class="form-control" value="@Model.Nom" required />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Catégorie parente</label>
+                    <select name="parentId" class="form-select">
+                        <option value="0">— Aucune (catégorie principale) —</option>
+                        @foreach (var p in parents)
+                        {
+                            <option value="@p.Id" selected="@(Model.ParentId == p.Id)">@p.Nom</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Icône Font Awesome</label>
+                    <div class="input-group">
+                        <span class="input-group-text" id="previewIcon">
+                            <i class="fas @Model.IconeClass"></i>
+                        </span>
+                        <input type="text" name="iconeClass" id="iconeInput" class="form-control"
+                               value="@Model.IconeClass"
+                               oninput="previewIcone(this.value)" />
+                    </div>
+                    <div class="form-text">
+                        Exemples : <code>fa-laptop</code>, <code>fa-print</code>, <code>fa-network-wired</code>,
+                        <code>fa-keyboard</code>, <code>fa-desktop</code>, <code>fa-mobile-alt</code>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="estActive" value="true"
+                               id="estActive" @(Model.EstActive ? "checked" : "") />
+                        <label class="form-check-label fw-semibold" for="estActive">Catégorie active</label>
+                    </div>
+                    <div class="form-text text-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Une catégorie inactive n'apparaît plus dans le catalogue ni dans le formulaire produit.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary fw-bold">
+                <i class="fas fa-save me-2"></i>Enregistrer les modifications
+            </button>
+            <a href="@ViewBag.AdminBase/categories" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function previewIcone(val) {
+    const icon = document.getElementById('previewIcon');
+    icon.innerHTML = `<i class="fas ${val || 'fa-box'}"></i>`;
+}
+</script>

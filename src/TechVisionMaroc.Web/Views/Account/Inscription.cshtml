@@ -1,0 +1,174 @@
+@{ ViewData["Title"] = "Créer un compte"; }
+
+<div class="min-vh-100 d-flex align-items-center bg-light py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="card-header bg-success text-white text-center py-4">
+                        <i class="fas fa-user-plus fa-2x mb-2"></i>
+                        <h4 class="mb-0 fw-bold">Créer votre compte</h4>
+                        <small class="opacity-75">Rejoignez SODIV Bureau dès maintenant</small>
+                    </div>
+                    <div class="card-body p-4">
+
+                        @if (!ViewData.ModelState.IsValid)
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show py-2">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                @foreach (var err in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                                {
+                                    <div>@err.ErrorMessage</div>
+                                }
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        }
+
+                        <form asp-controller="Account" asp-action="Inscription" method="post" class="slow-form">
+                            @Html.AntiForgeryToken()
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+                                    <input type="text" name="prenom" class="form-control" placeholder="Mohammed" required autocomplete="given-name" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+                                    <input type="text" name="nom" class="form-control" placeholder="Alami" required autocomplete="family-name" />
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope text-muted"></i></span>
+                                    <input type="email" name="email" class="form-control" placeholder="vous@exemple.ma" required autocomplete="email" />
+                                </div>
+                                <div class="form-text">Un seul compte par adresse email autorisé.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Date de naissance <span class="text-danger">*</span></label>
+                                <input type="date" name="dateNaissance" id="dateNaissance" class="form-control"
+                                       max="@DateTime.Today.AddYears(-18).ToString("yyyy-MM-dd")"
+                                       required />
+                                <div class="form-text"><i class="fas fa-info-circle me-1"></i>Vous devez avoir au moins 18 ans.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Téléphone</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+212</span>
+                                    <input type="tel" name="telephone" class="form-control" placeholder="6XX-XXXXXX" autocomplete="tel" />
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold">Mot de passe <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock text-muted"></i></span>
+                                    <input type="password" name="motDePasse" id="motDePasse" class="form-control"
+                                           placeholder="Min. 8 caractères" minlength="8" required autocomplete="new-password"
+                                           oninput="evaluerMdp(this.value)" />
+                                    <button type="button" class="btn btn-outline-secondary" onclick="togglePwd('motDePasse','eye1')">
+                                        <i class="fas fa-eye" id="eye1"></i>
+                                    </button>
+                                </div>
+                                <!-- Jauge force -->
+                                <div class="mt-2">
+                                    <div class="progress" style="height:6px">
+                                        <div id="jaugeMdp" class="progress-bar" role="progressbar" style="width:0%"></div>
+                                    </div>
+                                    <div id="labelMdp" class="form-text mt-1"></div>
+                                </div>
+                                <ul class="form-text mt-1 mb-0 ps-3" id="reglesMdp">
+                                    <li id="r-len"  class="text-danger">Au moins 8 caractères</li>
+                                    <li id="r-maj"  class="text-danger">Au moins une majuscule (A-Z)</li>
+                                    <li id="r-min"  class="text-danger">Au moins une minuscule (a-z)</li>
+                                    <li id="r-num"  class="text-danger">Au moins un chiffre (0-9)</li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Confirmer le mot de passe <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock text-muted"></i></span>
+                                    <input type="password" name="confirmer" id="confirmer" class="form-control"
+                                           placeholder="••••••••" required autocomplete="new-password"
+                                           oninput="verifierCorrespondance()" />
+                                    <button type="button" class="btn btn-outline-secondary" onclick="togglePwd('confirmer','eye2')">
+                                        <i class="fas fa-eye" id="eye2"></i>
+                                    </button>
+                                </div>
+                                <div id="msgConfirm" class="form-text"></div>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="cgu" required />
+                                <label class="form-check-label" for="cgu">
+                                    J'accepte les <a href="#" class="text-primary">conditions générales de vente</a>
+                                </label>
+                            </div>
+
+                            <button type="submit" id="btnInscrire" class="btn btn-success w-100 btn-lg fw-semibold">
+                                <i class="fas fa-user-check me-2"></i>Créer mon compte
+                            </button>
+                        </form>
+
+                        <hr class="my-3" />
+                        <p class="text-center mb-0">
+                            Déjà un compte ?
+                            <a href="/Account/Connexion" class="text-primary fw-semibold text-decoration-none">Se connecter</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function togglePwd(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon  = document.getElementById(iconId);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    icon.className = input.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function evaluerMdp(v) {
+    const len = v.length >= 8;
+    const maj = /[A-Z]/.test(v);
+    const min = /[a-z]/.test(v);
+    const num = /[0-9]/.test(v);
+
+    document.getElementById('r-len').className = len ? 'text-success' : 'text-danger';
+    document.getElementById('r-maj').className = maj ? 'text-success' : 'text-danger';
+    document.getElementById('r-min').className = min ? 'text-success' : 'text-danger';
+    document.getElementById('r-num').className = num ? 'text-success' : 'text-danger';
+
+    const score = [len, maj, min, num].filter(Boolean).length;
+    const jauge = document.getElementById('jaugeMdp');
+    const label = document.getElementById('labelMdp');
+    const classes = ['bg-danger','bg-danger','bg-warning','bg-info','bg-success'];
+    const labels  = ['','Très faible','Faible','Moyen','Fort'];
+    jauge.style.width = (score * 25) + '%';
+    jauge.className = 'progress-bar ' + (classes[score] || '');
+    label.textContent = labels[score] || '';
+}
+
+function verifierCorrespondance() {
+    const mdp = document.getElementById('motDePasse').value;
+    const c   = document.getElementById('confirmer').value;
+    const msg = document.getElementById('msgConfirm');
+    if (!c) { msg.textContent = ''; return; }
+    if (mdp === c) {
+        msg.textContent = '✓ Les mots de passe correspondent';
+        msg.className = 'form-text text-success';
+    } else {
+        msg.textContent = '✗ Les mots de passe ne correspondent pas';
+        msg.className = 'form-text text-danger';
+    }
+}
+</script>
+}

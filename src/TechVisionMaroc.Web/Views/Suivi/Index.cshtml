@@ -1,0 +1,64 @@
+@{
+    ViewData["Title"] = "Suivi de colis";
+}
+
+<div class="container py-5" style="max-width:680px">
+    <div class="text-center mb-4">
+        <i class="fas fa-truck-fast fa-3x text-primary mb-3"></i>
+        <h1 class="h3 fw-bold">Suivre mon colis</h1>
+        <p class="text-muted">Saisissez votre numéro de commande pour suivre votre livraison en temps réel.</p>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]</div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form method="post" action="/suivi">
+                @Html.AntiForgeryToken()
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">N° de commande *</label>
+                    <input type="text" name="numero" class="form-control form-control-lg"
+                           placeholder="TVM-20251225-1234" required />
+                    <small class="text-muted">Indiqué sur votre confirmation de commande.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">N° de suivi (si non connecté)</label>
+                    <input type="text" name="numeroSuivi" class="form-control"
+                           placeholder="Ex: DHL1234567WW" />
+                    <small class="text-muted">Reçu par e-mail à l'expédition. Optionnel si vous êtes connecté.</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100 fw-semibold">
+                    <i class="fas fa-search me-2"></i>Suivre mon colis
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logos transporteurs -->
+    <div class="row g-3 mt-4 text-center">
+        <div class="col-4">
+            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                <i class="fas fa-mail-bulk fa-2x text-danger mb-2"></i>
+                <div class="fw-semibold small">Amana</div>
+                <small class="text-muted">Poste Maroc</small>
+            </div></div>
+        </div>
+        <div class="col-4">
+            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                <i class="fas fa-bus fa-2x text-warning mb-2"></i>
+                <div class="fw-semibold small">CTM Express</div>
+                <small class="text-muted">Messagerie</small>
+            </div></div>
+        </div>
+        <div class="col-4">
+            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                <i class="fas fa-plane fa-2x text-warning mb-2"></i>
+                <div class="fw-semibold small">DHL Express</div>
+                <small class="text-muted">International</small>
+            </div></div>
+        </div>
+    </div>
+</div>

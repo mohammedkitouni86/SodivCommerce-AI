@@ -1,0 +1,142 @@
+@model TechVisionMaroc.Models.Commande
+@{
+    ViewData["Title"] = $"Suivi {Model.NumeroCommande}";
+    var evts  = ViewBag.Evenements as IReadOnlyList<TechVisionMaroc.Services.EvenementSuivi>
+                ?? new List<TechVisionMaroc.Services.EvenementSuivi>();
+    var info  = (TechVisionMaroc.Services.InfoTransporteur)ViewBag.Info;
+    var urlExt = ViewBag.UrlExterne as string;
+    bool expediee = Model.Statut == TechVisionMaroc.Models.StatutCommande.Expediee
+                 || Model.Statut == TechVisionMaroc.Models.StatutCommande.Livree;
+    bool livree   = Model.Statut == TechVisionMaroc.Models.StatutCommande.Livree;
+
+    var (badgeClass, badgeIcone, badgeLbl) = Model.Statut switch {
+        TechVisionMaroc.Models.StatutCommande.EnAttente     => ("warning text-dark", "fa-clock",       "En attente"),
+        TechVisionMaroc.Models.StatutCommande.Confirmee     => ("info text-white",   "fa-check",       "Confirmée"),
+        TechVisionMaroc.Models.StatutCommande.EnPreparation => ("primary text-white","fa-cogs",        "En préparation"),
+        TechVisionMaroc.Models.StatutCommande.Expediee      => ("primary text-white","fa-truck",       "Expédiée"),
+        TechVisionMaroc.Models.StatutCommande.Livree        => ("success text-white","fa-box-open",    "Livrée"),
+        TechVisionMaroc.Models.StatutCommande.Annulee       => ("danger text-white", "fa-times-circle","Annulée"),
+        _                                                   => ("secondary text-white","fa-undo",     Model.Statut.ToString())
+    };
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container d-flex align-items-center gap-3">
+        <a href="/suivi" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left"></i></a>
+        <div>
+            <h5 class="mb-0 fw-bold"><i class="fas fa-route me-2 text-info"></i>Suivi de @Model.NumeroCommande</h5>
+            <small class="text-muted">Commandé le @Model.DateCommande.ToLocalTime().ToString("dd MMMM yyyy")</small>
+        </div>
+        <span class="badge bg-@badgeClass ms-auto fs-6"><i class="fas @badgeIcone me-1"></i>@badgeLbl</span>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:900px">
+    <div class="row g-4">
+        <!-- Timeline -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-semibold">
+                    <i class="fas fa-stream me-2 text-primary"></i>Historique du colis (@evts.Count étapes)
+                </div>
+                <div class="card-body">
+                    <div class="position-relative ps-4">
+                        @{ int i = 0; }
+                        @foreach (var e in evts)
+                        {
+                            bool first = i == 0;
+                            <div class="d-flex gap-3 pb-4 position-relative">
+                                <div class="position-absolute" style="left:-22px;top:0;">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center
+                                                @(first ? "bg-success text-white" : "bg-light text-muted border")"
+                                         style="width:36px;height:36px;">
+                                        <i class="fas @e.Icone"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 @(first ? "" : "opacity-75")">
+                                    <div class="fw-bold @(first ? "text-success" : "")">
+                                        @e.Statut
+                                        @if (first)
+                                        {
+                                            <span class="badge bg-success ms-2">Actuel</span>
+                                        }
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <i class="fas fa-map-marker-alt me-1"></i>@e.Lieu
+                                    </div>
+                                    <div class="small">@e.Description</div>
+                                    <div class="text-muted" style="font-size:.78rem">
+                                        <i class="fas fa-clock me-1"></i>@e.Date.ToLocalTime().ToString("dd/MM/yyyy à HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                            i++;
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Infos transporteur + livraison -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-@info.Couleur text-white fw-semibold">
+                    <i class="fas @info.LogoIcone me-2"></i>@info.Nom
+                </div>
+                <div class="card-body small">
+                    @if (!string.IsNullOrEmpty(Model.NumeroSuivi))
+                    {
+                        <div class="mb-2">
+                            <div class="text-muted">Numéro de suivi</div>
+                            <div class="fw-bold font-monospace">@Model.NumeroSuivi</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(info.TelSupport))
+                    {
+                        <div class="mb-2"><i class="fas fa-phone me-2 text-muted"></i>@info.TelSupport</div>
+                    }
+                    @if (urlExt != null)
+                    {
+                        <a href="@urlExt" target="_blank" rel="noopener" class="btn btn-outline-@info.Couleur btn-sm w-100 mt-2">
+                            <i class="fas fa-external-link-alt me-2"></i>Suivre sur @info.Nom
+                        </a>
+                    }
+                    @if (Model.Transporteur == TechVisionMaroc.Models.Transporteur.Aucun)
+                    {
+                        <div class="text-muted">Le transporteur sera affecté dès l'expédition.</div>
+                    }
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold">
+                    <i class="fas fa-map-marker-alt me-2 text-danger"></i>Adresse de livraison
+                </div>
+                <div class="card-body small">
+                    <div>@Model.AdresseLivraison</div>
+                    <div class="fw-semibold">@Model.VilleLivraison</div>
+                    <div class="text-muted mt-1"><i class="fas fa-phone me-1"></i>@Model.TelephoneLivraison</div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-semibold">
+                    <i class="fas fa-shopping-bag me-2 text-primary"></i>Contenu (@Model.Lignes.Count)
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var l in Model.Lignes)
+                    {
+                        <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                            <img src="@(string.IsNullOrEmpty(l.Produit?.ImageUrl) ? "/images/placeholder.svg" : l.Produit.ImageUrl)"
+                                 style="width:42px;height:42px;object-fit:contain" />
+                            <div class="flex-grow-1 small">
+                                <div class="fw-semibold text-truncate" style="max-width:160px">@l.Produit?.Nom</div>
+                                <div class="text-muted">x @l.Quantite</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

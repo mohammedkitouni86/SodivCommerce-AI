@@ -1,0 +1,173 @@
+@model List<TechVisionMaroc.Models.Utilisateur>
+
+@{
+    ViewData["Title"] = "Gestion Clients";
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h4 class="mb-0 fw-bold"><i class="fas fa-users me-2 text-info"></i>Gestion des Clients</h4>
+            <span class="badge bg-info fs-6"><strong>@(((int)ViewBag.Total).ToString("N0"))</strong> clients</span>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Recherche & filtres -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" action="@ViewBag.AdminBase/clients" class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="small fw-semibold mb-1">Rechercher</label>
+                    <input type="text" name="q" value="@ViewBag.Q" class="form-control" placeholder="Nom, prénom, email, téléphone..." />
+                </div>
+                <div class="col-md-3">
+                    <label class="small fw-semibold mb-1">Ville</label>
+                    <select name="ville" class="form-select">
+                        <option value="">Toutes les villes</option>
+                        @foreach (var v in (List<string>)ViewBag.Villes)
+                        {
+                            if (ViewBag.Ville?.ToString() == v)
+                            { <option value="@v" selected>@v</option> }
+                            else
+                            { <option value="@v">@v</option> }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-1"></i>Filtrer</button>
+                    <a href="@ViewBag.AdminBase/clients" class="btn btn-outline-secondary"><i class="fas fa-times"></i></a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Ville</th>
+                        <th>Statut</th>
+                        <th>Inscrit le</th>
+                        <th>Dernière commande</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr>
+                            <td class="text-muted small">#@u.Id</td>
+                            <td class="fw-semibold">@u.Prenom @u.Nom</td>
+                            <td>@u.Email</td>
+                            <td>@(string.IsNullOrEmpty(u.Telephone) ? "-" : u.Telephone)</td>
+                            <td>@(string.IsNullOrEmpty(u.Ville) ? "-" : u.Ville)</td>
+                            <td>
+                                @if (u.EstActif)
+                                {
+                                    <span class="badge bg-success">Actif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Bloqué</span>
+                                }
+                            </td>
+                            <td class="text-muted small">@u.DateInscription.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            <td class="text-muted small">
+                                @{
+                                    var dernieresCmd = (Dictionary<int, DateTime>)ViewBag.DernieresCommandes;
+                                    if (dernieresCmd.TryGetValue(u.Id, out var derniereCmd))
+                                    {
+                                        <span title="Dernière commande">@derniereCmd.ToLocalTime().ToString("dd/MM/yyyy")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted fst-italic" title="Aucune commande — date d'inscription">
+                                            @u.DateInscription.ToLocalTime().ToString("dd/MM/yyyy") <small>(inscription)</small>
+                                        </span>
+                                    }
+                                }
+                            </td>
+                            <td>
+                                <a href="@ViewBag.AdminBase/clients/modifier/@u.Id" class="btn btn-sm btn-outline-primary" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form method="post" action="@ViewBag.AdminBase/clients/bloquer/@u.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm @(u.EstActif ? "btn-outline-warning" : "btn-outline-success")" title="@(u.EstActif ? "Bloquer" : "Débloquer")">
+                                        <i class="fas @(u.EstActif ? "fa-ban" : "fa-check-circle")"></i>
+                                    </button>
+                                </form>
+                                @if (ViewBag.EstSuperAdmin == true)
+                                {
+                                    <form method="post" action="@ViewBag.AdminBase/clients/supprimer/@u.Id" class="d-inline"
+                                          onsubmit="return confirm('Supprimer définitivement ce client ?')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-4">Aucun client trouvé.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @{
+        int currentPage  = (int)ViewBag.Page;
+        int totalPages   = (int)ViewBag.Pages;
+    }
+    @if (totalPages > 1)
+    {
+        int delta = 2;
+        int debut = Math.Max(1, currentPage - delta);
+        int finP  = Math.Min(totalPages, currentPage + delta);
+        string url(int p) => $"{ViewBag.AdminBase}/clients?page={p}&q={ViewBag.Q}&ville={ViewBag.Ville}";
+
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@(currentPage <= 1 ? "#" : url(currentPage - 1))"><i class="fas fa-chevron-left"></i></a>
+                </li>
+                @if (debut > 1)
+                {
+                    <li class="page-item"><a class="page-link" href="@url(1)">1</a></li>
+                    if (debut > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                }
+                @for (int i = debut; i <= finP; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" href="@url(i)">@i</a>
+                    </li>
+                }
+                @if (finP < totalPages)
+                {
+                    if (finP < totalPages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                    <li class="page-item"><a class="page-link" href="@url(totalPages)">@totalPages</a></li>
+                }
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link" href="@(currentPage >= totalPages ? "#" : url(currentPage + 1))"><i class="fas fa-chevron-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        <div class="text-center text-muted small">
+            Page <strong>@currentPage</strong> sur <strong>@totalPages</strong> · 50 clients par page · Total <strong>@(((int)ViewBag.Total).ToString("N0"))</strong>
+        </div>
+    }
+</div>

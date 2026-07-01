@@ -1,0 +1,255 @@
+@model TechVisionMaroc.Models.Panier
+@inject IFideliteService Fidelite
+@{
+    ViewData["Title"] = "Finaliser la commande";
+    var uid = Context.Session.GetInt32("UtilisateurId");
+    int soldePoints = 0;
+    int maxPointsUtilisables = 0;
+    decimal totalAvant = Model.Total + (Model.Total >= 500 ? 0m : 30m);
+    if (uid != null)
+    {
+        soldePoints = await Fidelite.SoldeAsync(uid.Value);
+        maxPointsUtilisables = await Fidelite.MaxUtilisableAsync(uid.Value, totalAvant);
+    }
+    var valeurPoint = Fidelite.ValeurPoint;
+    var pctMax      = Fidelite.PourcentageMaxReduction;
+}
+
+<div class="container py-5">
+    <h2 class="fw-bold mb-4"><i class="fas fa-clipboard-check me-2 text-primary"></i>Finaliser la commande</h2>
+
+    <div class="row g-4">
+        <!-- Formulaire livraison + paiement -->
+        <div class="col-lg-7">
+            <form asp-controller="Panier" asp-action="ValiderCommande" method="post" class="slow-form">
+                @Html.AntiForgeryToken()
+
+                <!-- Livraison -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white fw-semibold">
+                        <i class="fas fa-truck me-2"></i>Adresse de livraison
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Adresse complète *</label>
+                            <input type="text" name="adresse" class="form-control" placeholder="N° rue, quartier..." required />
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Ville *</label>
+                                <select name="ville" class="form-select" required>
+                                    <option value="">Sélectionner...</option>
+                                    @foreach (var v in new[] { "Casablanca","Rabat","Fès","Marrakech","Agadir","Tanger","Meknès","Oujda","Kénitra","Tétouan","El Jadida","Mohammedia" })
+                                    {
+                                        <option value="@v">@v</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Téléphone *</label>
+                                <input type="tel" name="telephone" class="form-control" placeholder="+212 6XX-XXXXXX" required />
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label fw-semibold">Notes / Instructions (optionnel)</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Ex: Sonner à l'interphone 3B..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Points fidélité -->
+                @if (soldePoints > 0)
+                {
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark fw-semibold">
+                            <i class="fas fa-star me-2"></i>Mes points fidélité
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                Vous avez <strong class="text-warning">@soldePoints points</strong>
+                                (valeur : @((soldePoints * valeurPoint).ToString("N2")) MAD).
+                            </p>
+                            @if (maxPointsUtilisables > 0)
+                            {
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" id="utiliserPoints" class="form-check-input" />
+                                    <label for="utiliserPoints" class="form-check-label fw-semibold">
+                                        Utiliser mes points sur cette commande (max @maxPointsUtilisables, soit -@((maxPointsUtilisables * valeurPoint).ToString("N2")) MAD)
+                                    </label>
+                                </div>
+                                <div id="pointsBlock" class="d-none">
+                                    <input type="range" id="pointsSlider" name="pointsFidelite" class="form-range"
+                                           min="0" max="@maxPointsUtilisables" step="10" value="@maxPointsUtilisables" />
+                                    <div class="d-flex justify-content-between small">
+                                        <span><strong id="pointsUtilises">@maxPointsUtilisables</strong> points</span>
+                                        <span class="text-success">Réduction : -<strong id="pointsReduction">@((maxPointsUtilisables * valeurPoint).ToString("N2"))</strong> MAD</span>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="pointsFideliteFinal" id="pointsFideliteFinal" />
+                                <small class="text-muted d-block mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>Réduction limitée à @pctMax.ToString("0")% du total.
+                                </small>
+                            }
+                            else
+                            {
+                                <p class="text-muted small mb-0">Votre commande est trop faible pour utiliser des points.</p>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Paiement -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-success text-white fw-semibold">
+                        <i class="fas fa-credit-card me-2"></i>Mode de paiement
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="payment-card d-block text-center border rounded-3 p-3 cursor-pointer">
+                                    <input type="radio" name="methode" value="Stripe" class="d-none" />
+                                    <i class="fab fa-stripe fa-2x text-primary mb-2 d-block"></i>
+                                    <div class="fw-semibold small">Carte bancaire</div>
+                                    <div class="text-muted" style="font-size:.7rem">Visa, Mastercard</div>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="payment-card d-block text-center border rounded-3 p-3 cursor-pointer">
+                                    <input type="radio" name="methode" value="CMI" class="d-none" />
+                                    <i class="fas fa-credit-card fa-2x text-success mb-2 d-block"></i>
+                                    <div class="fw-semibold small">CMI Maroc</div>
+                                    <div class="text-muted" style="font-size:.7rem">CIH, CCP, Banque Pop…</div>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="payment-card d-block text-center border rounded-3 p-3 cursor-pointer">
+                                    <input type="radio" name="methode" value="PayPal" class="d-none" />
+                                    <i class="fab fa-paypal fa-2x text-info mb-2 d-block"></i>
+                                    <div class="fw-semibold small">PayPal</div>
+                                    <div class="text-muted" style="font-size:.7rem">Paiement international</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-lg w-100 fw-semibold">
+                    <i class="fas fa-lock me-2"></i>Confirmer et payer @((Model.Total + (Model.Total >= 500 ? 0 : 30)).ToString("N2")) MAD
+                </button>
+                <p class="text-center text-muted small mt-2">
+                    <i class="fas fa-shield-alt me-1 text-success"></i>Paiement sécurisé SSL 256 bits
+                </p>
+            </form>
+        </div>
+
+        <!-- Résumé commande -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm sticky-top" style="top:90px">
+                <div class="card-header bg-dark text-white fw-semibold">
+                    <i class="fas fa-shopping-bag me-2"></i>Résumé (@Model.NombreArticles articles)
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var ligne in Model.Lignes)
+                    {
+                        <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                            <img src="@(string.IsNullOrEmpty(ligne.Produit?.ImageUrl) ? "/images/placeholder.svg" : ligne.Produit.ImageUrl)"
+                                 style="width:50px;height:50px;object-fit:contain" class="rounded" />
+                            <div class="flex-grow-1 small">
+                                <div class="fw-semibold text-truncate">@ligne.Produit?.Nom</div>
+                                <div class="text-muted">x @ligne.Quantite</div>
+                            </div>
+                            <div class="fw-semibold small">@ligne.SousTotal.ToString("N2") MAD</div>
+                        </div>
+                    }
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-between mb-1 small">
+                        <span>Sous-total</span><span>@Model.Total.ToString("N2") MAD</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 small">
+                        <span>Livraison</span>
+                        @if (Model.Total >= 500)
+                        {
+                            <span class="text-success">Gratuite</span>
+                        }
+                        else
+                        {
+                            <span>30,00 MAD</span>
+                        }
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 small d-none" id="ligneReductionPoints">
+                        <span class="text-warning">Réduction points fidélité</span>
+                        <span class="text-warning">-<span id="reductionAffichee">0,00</span> MAD</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold">
+                        <span>Total</span>
+                        <span class="text-primary fs-5"><span id="totalFinal">@totalAvant.ToString("N2")</span> MAD</span>
+                    </div>
+                    <div class="alert alert-warning small mt-3 mb-0" id="pointsAGagner">
+                        <i class="fas fa-star me-1"></i>Vous gagnerez environ <strong>@((int)Math.Floor(Model.Total * 0.8m))</strong> points sur cette commande.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// Sélection visuelle méthode paiement
+document.querySelectorAll('.payment-card').forEach(card => {
+    card.addEventListener('click', function () {
+        document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10'));
+        this.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+        this.querySelector('input[type=radio]').checked = true;
+    });
+});
+// Sélectionner Stripe par défaut
+document.querySelector('.payment-card').click();
+
+// ── Points fidélité ──
+(function () {
+    const cb       = document.getElementById('utiliserPoints');
+    const block    = document.getElementById('pointsBlock');
+    const slider   = document.getElementById('pointsSlider');
+    const lblPts   = document.getElementById('pointsUtilises');
+    const lblRed   = document.getElementById('pointsReduction');
+    const lignePts = document.getElementById('ligneReductionPoints');
+    const redAff   = document.getElementById('reductionAffichee');
+    const totalEl  = document.getElementById('totalFinal');
+    const btnSubmit= document.querySelector('button[type="submit"].btn-success');
+
+    if (!cb || !slider) return;
+
+    const valeurPoint = @valeurPoint.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    const totalAvant  = @totalAvant.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+    function maj() {
+        const actif = cb.checked;
+        const pts = actif ? parseInt(slider.value, 10) : 0;
+        const red = pts * valeurPoint;
+        slider.disabled = !actif;
+        block.classList.toggle('d-none', !actif);
+        lblPts.textContent = pts;
+        lblRed.textContent = red.toFixed(2).replace('.', ',');
+
+        if (red > 0) {
+            lignePts.classList.remove('d-none');
+            redAff.textContent = red.toFixed(2).replace('.', ',');
+        } else {
+            lignePts.classList.add('d-none');
+        }
+        const nouveau = Math.max(0, totalAvant - red).toFixed(2).replace('.', ',');
+        if (totalEl) totalEl.textContent = nouveau;
+        if (btnSubmit) btnSubmit.innerHTML = '<i class="fas fa-lock me-2"></i>Confirmer et payer ' + nouveau + ' MAD';
+
+        // Champ caché : si désactivé envoie 0
+        slider.name = actif ? 'pointsFidelite' : '_pointsFidelite_off';
+    }
+
+    cb.addEventListener('change', maj);
+    slider.addEventListener('input', maj);
+    maj();
+})();
+</script>
+}

@@ -1,0 +1,211 @@
+@model List<TechVisionMaroc.Models.Commande>
+@inject TechVisionMaroc.Services.ISuiviColisService SuiviSvc
+
+@{
+    ViewData["Title"] = "Gestion Commandes";
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="container-fluid px-4 pt-3">
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h4 class="mb-0 fw-bold"><i class="fas fa-shopping-cart me-2 text-success"></i>Gestion des Commandes</h4>
+            <span class="badge bg-primary fs-6"><strong>@(((int)ViewBag.Total).ToString("N0"))</strong> commandes</span>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Recherche & filtres -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" action="@ViewBag.AdminBase/commandes" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="small fw-semibold mb-1">Rechercher</label>
+                    <input type="text" name="q" value="@ViewBag.Q" class="form-control" placeholder="N° commande, nom, email, ville..." />
+                </div>
+                <div class="col-md-2">
+                    <label class="small fw-semibold mb-1">Statut</label>
+                    <select name="statut" class="form-select">
+                        <option value="">Tous</option>
+                        @foreach (var s in Enum.GetValues<TechVisionMaroc.Models.StatutCommande>())
+                        {
+                            if (ViewBag.Statut != null && (TechVisionMaroc.Models.StatutCommande)ViewBag.Statut == s)
+                            { <option value="@s" selected>@s</option> }
+                            else
+                            { <option value="@s">@s</option> }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="small fw-semibold mb-1">Date début</label>
+                    <input type="date" name="dateDebut" value="@(ViewBag.DateDebut != null ? ((DateTime)ViewBag.DateDebut).ToString("yyyy-MM-dd") : "")" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="small fw-semibold mb-1">Date fin</label>
+                    <input type="date" name="dateFin" value="@(ViewBag.DateFin != null ? ((DateTime)ViewBag.DateFin).ToString("yyyy-MM-dd") : "")" class="form-control" />
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-1"></i>Filtrer</button>
+                    <a href="@ViewBag.AdminBase/commandes" class="btn btn-outline-secondary"><i class="fas fa-times"></i></a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>N° Commande</th>
+                        <th>Client</th>
+                        <th>Total</th>
+                        <th>Paiement</th>
+                        <th>Statut</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        var infoT = SuiviSvc.Info(c.Transporteur);
+                        <tr>
+                            <td class="fw-semibold text-primary">@c.NumeroCommande</td>
+                            <td>@c.Utilisateur?.Prenom @c.Utilisateur?.Nom</td>
+                            <td class="fw-bold">@c.Total.ToString("N2") MAD</td>
+                            <td><span class="badge bg-secondary">@c.MethodePaiement</span></td>
+                            <td>
+                                @{
+                                    var (cls, lbl) = c.Statut switch {
+                                        TechVisionMaroc.Models.StatutCommande.Confirmee    => ("success", "Confirmée"),
+                                        TechVisionMaroc.Models.StatutCommande.EnPreparation=> ("info", "En préparation"),
+                                        TechVisionMaroc.Models.StatutCommande.Expediee     => ("primary", "Expédiée"),
+                                        TechVisionMaroc.Models.StatutCommande.Livree       => ("dark", "Livrée"),
+                                        TechVisionMaroc.Models.StatutCommande.Annulee      => ("danger", "Annulée"),
+                                        TechVisionMaroc.Models.StatutCommande.Remboursee   => ("warning", "Remboursée"),
+                                        _                                                  => ("warning", "En attente")
+                                    };
+                                }
+                                <span class="badge bg-@cls">@lbl</span>
+                            </td>
+                            <td class="text-muted small">@c.DateCommande.ToString("dd/MM/yy HH:mm")</td>
+                            <td>
+                                <form method="post" action="@ViewBag.AdminBase/commandes/statut" class="d-flex gap-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <select name="statut" class="form-select form-select-sm" style="width:auto">
+                                        @foreach (var s in Enum.GetValues<TechVisionMaroc.Models.StatutCommande>())
+                                        {
+                                            if (c.Statut == s)
+                                            {
+                                                <option value="@s" selected>@s</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@s">@s</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                    <a href="@ViewBag.AdminBase/commandes/@c.Id/facture" target="_blank"
+                                       class="btn btn-outline-danger btn-sm" title="Facture PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                </form>
+                                <!-- Suivi colis -->
+                                <form method="post" action="@ViewBag.AdminBase/commandes/suivi" class="d-flex gap-1 mt-1">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <select name="transporteur" class="form-select form-select-sm" style="width:auto" title="Transporteur">
+                                        @foreach (var tr in Enum.GetValues<TechVisionMaroc.Models.Transporteur>())
+                                        {
+                                            if (c.Transporteur == tr)
+                                            { <option value="@tr" selected>@SuiviSvc.Info(tr).Nom</option> }
+                                            else
+                                            { <option value="@tr">@SuiviSvc.Info(tr).Nom</option> }
+                                        }
+                                    </select>
+                                    <input type="text" name="numeroSuivi" value="@c.NumeroSuivi"
+                                           placeholder="N° suivi (auto si vide)"
+                                           class="form-control form-control-sm" style="width:170px" />
+                                    <button type="submit" class="btn btn-outline-info btn-sm" title="Enregistrer le suivi">
+                                        <i class="fas fa-truck"></i>
+                                    </button>
+                                    @if (!string.IsNullOrEmpty(c.NumeroSuivi))
+                                    {
+                                        <a href="/suivi/@c.NumeroCommande?key=@c.NumeroSuivi" target="_blank"
+                                           class="btn btn-outline-success btn-sm" title="Voir le suivi public">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Aucune commande pour l'instant.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @{
+        int currentPage = (int)ViewBag.Page;
+        int totalPages  = (int)ViewBag.Pages;
+    }
+    @if (totalPages > 1)
+    {
+        int delta = 2;
+        int debut = Math.Max(1, currentPage - delta);
+        int finP  = Math.Min(totalPages, currentPage + delta);
+        string url(int p) => $"{ViewBag.AdminBase}/commandes?page={p}&q={ViewBag.Q}&statut={ViewBag.Statut}";
+
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@(currentPage <= 1 ? "#" : url(currentPage - 1))"><i class="fas fa-chevron-left"></i></a>
+                </li>
+                @if (debut > 1)
+                {
+                    <li class="page-item"><a class="page-link" href="@url(1)">1</a></li>
+                    if (debut > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                }
+                @for (int i = debut; i <= finP; i++)
+                {
+                    <li class="page-item @(i == currentPage ? "active" : "")">
+                        <a class="page-link" href="@url(i)">@i</a>
+                    </li>
+                }
+                @if (finP < totalPages)
+                {
+                    if (finP < totalPages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                    <li class="page-item"><a class="page-link" href="@url(totalPages)">@totalPages</a></li>
+                }
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link" href="@(currentPage >= totalPages ? "#" : url(currentPage + 1))"><i class="fas fa-chevron-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        <div class="text-center text-muted small">
+            Page <strong>@currentPage</strong> sur <strong>@totalPages</strong> · 50 commandes par page · Total <strong>@(((int)ViewBag.Total).ToString("N0"))</strong>
+        </div>
+    }
+</div>

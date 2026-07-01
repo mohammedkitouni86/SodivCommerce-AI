@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = "Demander un devis";
+}
+
+<section class="py-5" style="background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);">
+    <div class="container text-white text-center">
+        <span class="badge bg-warning text-dark mb-3"><i class="fas fa-file-invoice-dollar me-1"></i>Service B2B</span>
+        <h1 class="fw-bold mb-2">Demander un devis personnalisé</h1>
+        <p class="lead mb-0 opacity-90">Tarifs dégressifs pour les commandes en volume · Réponse sous 24 h ouvrées.</p>
+    </div>
+</section>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-md-5">
+
+                    <div id="devisSucces" class="alert alert-success d-none">
+                        <i class="fas fa-check-circle me-2"></i>Votre demande de devis a bien été envoyée. Notre équipe vous recontactera rapidement.
+                    </div>
+                    <div id="devisErreur" class="alert alert-danger d-none"></div>
+
+                    <form id="formDevis" novalidate>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="nomProduit" value="Demande générale (page Devis)" />
+                        <input type="hidden" name="produitId" value="0" />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Nom complet <span class="text-danger">*</span></label>
+                                <input type="text" name="nom" class="form-control form-control-lg" required maxlength="200" placeholder="Ex : Mohammed Kitouni" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Société <span class="text-muted small">(optionnel)</span></label>
+                                <input type="text" name="societe" class="form-control form-control-lg" maxlength="150" placeholder="Nom de l'entreprise" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control form-control-lg" required maxlength="150" placeholder="vous@entreprise.com" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Téléphone <span class="text-muted small">(optionnel)</span></label>
+                                <input type="tel" name="telephone" class="form-control form-control-lg" maxlength="20" placeholder="+212 6 00 00 00 00" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Votre besoin <span class="text-danger">*</span></label>
+                                <textarea name="message" class="form-control" rows="5" required maxlength="2000"
+                                          placeholder="Décrivez les produits, quantités et délais souhaités…"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 align-items-center mt-4">
+                            <button type="submit" id="btnDevis" class="btn btn-primary btn-lg px-4">
+                                <i class="fas fa-paper-plane me-2"></i>Envoyer la demande
+                            </button>
+                            <a href="https://wa.me/212661900569" target="_blank" class="btn btn-outline-success btn-lg">
+                                <i class="fab fa-whatsapp me-2"></i>Ou via WhatsApp
+                            </a>
+                            <span class="text-muted small ms-auto"><i class="fas fa-lock me-1"></i>Vos données restent confidentielles.</span>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+            <div class="row g-3 mt-4 text-center">
+                <div class="col-md-4"><div class="p-3"><i class="fas fa-tags fa-2x text-primary mb-2"></i><div class="fw-semibold">Tarifs dégressifs</div><small class="text-muted">Remises sur volume</small></div></div>
+                <div class="col-md-4"><div class="p-3"><i class="fas fa-clock fa-2x text-primary mb-2"></i><div class="fw-semibold">Réponse 24 h</div><small class="text-muted">Jours ouvrés</small></div></div>
+                <div class="col-md-4"><div class="p-3"><i class="fas fa-handshake fa-2x text-primary mb-2"></i><div class="fw-semibold">Accompagnement</div><small class="text-muted">Conseil dédié B2B</small></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('formDevis').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var form = e.target;
+    var succes = document.getElementById('devisSucces');
+    var erreur = document.getElementById('devisErreur');
+    var btn = document.getElementById('btnDevis');
+    succes.classList.add('d-none');
+    erreur.classList.add('d-none');
+
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+
+    btn.disabled = true;
+    var txt = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Envoi…';
+    try {
+        var res = await fetch('/Devis/Envoyer', { method: 'POST', body: new FormData(form) });
+        var data = await res.json();
+        if (data.ok) {
+            form.reset();
+            succes.classList.remove('d-none');
+            succes.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            erreur.textContent = data.erreur || "Échec de l'envoi. Réessayez ou utilisez WhatsApp.";
+            erreur.classList.remove('d-none');
+        }
+    } catch {
+        erreur.textContent = "Connexion impossible. Réessayez ou utilisez WhatsApp.";
+        erreur.classList.remove('d-none');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = txt;
+    }
+});
+</script>
+}

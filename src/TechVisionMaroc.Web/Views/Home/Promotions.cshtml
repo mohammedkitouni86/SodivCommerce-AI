@@ -1,0 +1,55 @@
+@using TechVisionMaroc.Models
+@{
+    ViewData["Title"] = "Promotions en cours";
+    var promos = (List<Produit>)ViewBag.Promos;
+}
+
+<!-- Hero -->
+<section class="text-white py-5" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+    <div class="container py-3 text-center">
+        <span class="badge bg-warning text-dark px-3 py-2 fs-6 mb-3"><i class="fas fa-fire me-1"></i>OFFRES LIMITÉES</span>
+        <h1 class="display-4 fw-bold">Promotions en cours</h1>
+        <p class="lead opacity-90 mb-0">Profitez de nos meilleures offres avant qu'il ne soit trop tard</p>
+    </div>
+</section>
+
+<div class="container py-5">
+
+    @if (!promos.Any())
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-tag fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">Aucune promotion en cours</h4>
+            <p class="text-muted">Revenez bientôt pour découvrir nos prochaines offres !</p>
+            <a href="/Catalogue" class="btn btn-primary mt-3"><i class="fas fa-shopping-bag me-2"></i>Voir le catalogue</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var p in promos)
+            {
+                var reduction = p.PrixPromo.HasValue
+                    ? (int)Math.Round((p.Prix - p.PrixPromo.Value) / p.Prix * 100)
+                    : 0;
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card border-0 shadow-sm h-100 position-relative">
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-danger fs-6 px-2 py-1">-@reduction%</span>
+                        <a href="/Produit/Details/@p.Id" class="text-decoration-none text-dark">
+                            <img src="@(string.IsNullOrEmpty(p.ImageUrl) ? "/images/placeholder.png" : p.ImageUrl)"
+                                 class="card-img-top" alt="@p.Nom"
+                                 style="height:180px; object-fit:cover;" />
+                            <div class="card-body">
+                                <h6 class="fw-semibold text-truncate mb-1">@p.Nom</h6>
+                                <div class="mt-2">
+                                    <span class="fw-bold text-danger fs-5">@p.PrixPromo?.ToString("N0") MAD</span><br />
+                                    <small class="text-muted text-decoration-line-through">@p.Prix.ToString("N0") MAD</small>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,221 @@
+@using TechVisionMaroc.Models
+@using TechVisionMaroc.Services
+@{
+    ViewData["Title"] = "Segmentation clients (RFM)";
+    Layout = "_Layout";
+    var repartition   = (List<StatSegment>)ViewBag.Repartition;
+    var clients       = (List<TopClientRFM>)ViewBag.Clients;
+    DateTime? dernier = ViewBag.DernierCalcul;
+    SegmentClient? filtre = ViewBag.Filtre;
+    string adminBase = (string)ViewBag.AdminBase;
+
+    int totalClients = repartition.Sum(r => r.NbClients);
+    decimal totalCA = repartition.Sum(r => r.CATotal);
+
+    string LibelleSegment(SegmentClient s) => s switch
+    {
+        SegmentClient.Champions          => "Champions",
+        SegmentClient.Loyaux             => "Loyaux",
+        SegmentClient.PotentielsFideles  => "Potentiels fidèles",
+        SegmentClient.NouveauxClients    => "Nouveaux clients",
+        SegmentClient.Prometteurs        => "Prometteurs",
+        SegmentClient.AttentionRequise   => "Attention requise",
+        SegmentClient.SurLePointDeDormir => "Sur le point de dormir",
+        SegmentClient.ARisque            => "À risque",
+        SegmentClient.AnciensVIP         => "Anciens VIP",
+        SegmentClient.Endormis           => "Endormis",
+        SegmentClient.Perdus             => "Perdus",
+        _ => s.ToString()
+    };
+
+    string CouleurSegment(SegmentClient s) => s switch
+    {
+        SegmentClient.Champions          => "success",
+        SegmentClient.Loyaux             => "primary",
+        SegmentClient.PotentielsFideles  => "info",
+        SegmentClient.NouveauxClients    => "info",
+        SegmentClient.Prometteurs        => "info",
+        SegmentClient.AttentionRequise   => "warning",
+        SegmentClient.SurLePointDeDormir => "warning",
+        SegmentClient.ARisque            => "danger",
+        SegmentClient.AnciensVIP         => "danger",
+        SegmentClient.Endormis           => "secondary",
+        SegmentClient.Perdus             => "dark",
+        _ => "light"
+    };
+
+    string ActionSegment(SegmentClient s) => s switch
+    {
+        SegmentClient.Champions          => "Récompenser, programmes VIP, demande d'avis",
+        SegmentClient.Loyaux             => "Upsell, parrainage, programmes fidélité",
+        SegmentClient.PotentielsFideles  => "Offres personnalisées, ne pas les laisser partir",
+        SegmentClient.NouveauxClients    => "Onboarding, guides, support proactif",
+        SegmentClient.Prometteurs        => "Offres de bienvenue, échantillons",
+        SegmentClient.AttentionRequise   => "Réactiver avec promo ciblée",
+        SegmentClient.SurLePointDeDormir => "Offre limitée, reconnexion",
+        SegmentClient.ARisque            => "Réactivation urgente, gros rabais",
+        SegmentClient.AnciensVIP         => "Reconquête personnalisée, contact direct",
+        SegmentClient.Endormis           => "Campagne de réactivation massive",
+        SegmentClient.Perdus             => "Ne pas surinvestir, dernière chance email",
+        _ => ""
+    };
+
+    int Pct(int n, int d) => d <= 0 ? 0 : (int)Math.Round(n * 100.0 / d);
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="fas fa-users-cog text-primary me-2"></i>Segmentation clients (RFM)</h2>
+            <p class="text-muted small mb-0">
+                Analyse Recency-Frequency-Monetary &mdash; 11 segments standards.
+                @if (dernier.HasValue) { <text>Dernier calcul : @dernier.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</text> }
+            </p>
+        </div>
+        <form method="post" action="@adminBase/segmentation/recalculer">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-primary" type="submit"><i class="fas fa-sync-alt me-1"></i>Recalculer maintenant</button>
+        </form>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    @if (!repartition.Any())
+    {
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Aucun score RFM calculé. Cliquez sur <strong>Recalculer maintenant</strong> pour lancer l'analyse.
+            <br /><small>Le job tourne automatiquement toutes les 6 heures.</small>
+        </div>
+    }
+    else
+    {
+        <!-- Stats top -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                        <div class="h3 mb-0">@totalClients</div>
+                        <div class="small text-muted">Clients analysés</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-coins fa-2x text-warning mb-2"></i>
+                        <div class="h3 mb-0">@totalCA.ToString("N0") MAD</div>
+                        <div class="small text-muted">CA total</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-trophy fa-2x text-success mb-2"></i>
+                        <div class="h3 mb-0">@(repartition.FirstOrDefault(r => r.Segment == SegmentClient.Champions)?.NbClients ?? 0)</div>
+                        <div class="small text-muted">Champions</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-heart-broken fa-2x text-danger mb-2"></i>
+                        <div class="h3 mb-0">
+                            @(repartition.Where(r => r.Segment == SegmentClient.ARisque || r.Segment == SegmentClient.AnciensVIP).Sum(r => r.NbClients))
+                        </div>
+                        <div class="small text-muted">À risque + VIP perdus</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition par segment -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><strong><i class="fas fa-chart-pie me-2"></i>Répartition par segment</strong></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var s in repartition)
+                    {
+                        var couleur = CouleurSegment(s.Segment);
+                        var actif = filtre == s.Segment;
+                        <div class="col-md-6 col-lg-4">
+                            <a href="@adminBase/segmentation?segment=@s.Segment"
+                               class="card text-decoration-none border @(actif ? $"border-{couleur} border-2" : "border-0") shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <span class="badge bg-@couleur">@LibelleSegment(s.Segment)</span>
+                                        <span class="text-muted small">@Pct(s.NbClients, totalClients)%</span>
+                                    </div>
+                                    <div class="h4 mb-1 text-dark">@s.NbClients <small class="text-muted fs-6">clients</small></div>
+                                    <div class="small text-muted">
+                                        CA moyen : <strong class="text-dark">@s.CAMoyen.ToString("N0") MAD</strong>
+                                    </div>
+                                    <div class="small text-muted mt-2 fst-italic">@ActionSegment(s.Segment)</div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des clients -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <strong>
+                    <i class="fas fa-list me-2"></i>
+                    Top 100 clients @(filtre.HasValue ? $"— Segment : {LibelleSegment(filtre.Value)}" : "(tous segments)")
+                </strong>
+                @if (filtre.HasValue)
+                {
+                    <a href="@adminBase/segmentation" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Retirer le filtre
+                    </a>
+                }
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Client</th>
+                                <th class="text-center">R</th>
+                                <th class="text-center">F</th>
+                                <th class="text-center">M</th>
+                                <th class="text-end">Dernier achat</th>
+                                <th class="text-end">Cmd</th>
+                                <th class="text-end">Total</th>
+                                <th>Segment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in clients)
+                            {
+                                var couleur = CouleurSegment(c.Segment);
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@c.Nom</div>
+                                        <small class="text-muted">@c.Email</small>
+                                    </td>
+                                    <td class="text-center"><span class="badge bg-light text-dark">@c.R</span></td>
+                                    <td class="text-center"><span class="badge bg-light text-dark">@c.F</span></td>
+                                    <td class="text-center"><span class="badge bg-light text-dark">@c.M</span></td>
+                                    <td class="text-end small text-muted">il y a @c.JoursDepuis j</td>
+                                    <td class="text-end">@c.NbCommandes</td>
+                                    <td class="text-end fw-semibold">@c.Total.ToString("N0") MAD</td>
+                                    <td><span class="badge bg-@couleur">@LibelleSegment(c.Segment)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>

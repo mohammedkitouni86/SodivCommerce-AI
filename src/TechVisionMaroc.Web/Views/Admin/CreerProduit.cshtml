@@ -1,0 +1,288 @@
+@{
+    ViewData["Title"] = "Ajouter un produit";
+    var categories = ViewBag.Categories as List<TechVisionMaroc.Models.Categorie> ?? new();
+    var modele = ViewBag.Modele as TechVisionMaroc.Models.Produit;
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="@ViewBag.AdminBase/produits" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h4 class="mb-0 fw-bold">
+                <i class="fas fa-plus-circle me-2 text-warning"></i>Ajouter un nouveau produit
+            </h4>
+        </div>
+    </div>
+</div>
+
+<div class="container py-4" style="max-width:960px">
+    <form method="post" action="@ViewBag.AdminBase/produits/creer" enctype="multipart/form-data">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+
+            <!-- Aperçu image -->
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3 sticky-top" style="top:80px">
+                    <img id="previewImg" src="/images/placeholder.svg"
+                         class="img-fluid rounded mb-3"
+                         style="max-height:160px;object-fit:contain;background:#f8f9fa"
+                         alt="Aperçu"
+                         onerror="this.src='/images/placeholder.svg'" />
+                    <p class="text-muted small mb-0">Aperçu image</p>
+                </div>
+            </div>
+
+            <!-- Formulaire -->
+            <div class="col-md-9">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+
+                        @if (TempData["Error"] != null)
+                        {
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                            </div>
+                        }
+
+                        <!-- Nom -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nom du produit <span class="text-danger">*</span></label>
+                            <input type="text" name="nom" class="form-control form-control-lg"
+                                   placeholder="Ex: HP EliteBook 840 G10"
+                                   required maxlength="200" />
+                        </div>
+
+                        <!-- Marque & Catégorie -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Marque <span class="text-danger">*</span></label>
+                                <input type="text" name="marque" class="form-control"
+                                       placeholder="Ex: HP, Dell, Logitech..." required />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Catégorie <span class="text-danger">*</span></label>
+                                <select name="categorieId" id="categorieSelect" class="form-select" required>
+                                    <option value="">-- Sélectionner --</option>
+                                    @foreach (var cat in categories.Where(c => c.ParentId == null))
+                                    {
+                                        <option value="@cat.Id">@cat.Nom</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Sous-catégorie <span class="text-muted small">(optionnel)</span></label>
+                                <select name="sousCategorieId" id="sousCategorieSelect" class="form-select" disabled>
+                                    <option value="">-- Aucune --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        @{
+                            var sousCatsJson = System.Text.Json.JsonSerializer.Serialize(
+                                categories.Where(c => c.ParentId == null).ToDictionary(
+                                    c => c.Id.ToString(),
+                                    c => c.SousCategories.OrderBy(s => s.Nom)
+                                                          .Select(s => new { id = s.Id, nom = s.Nom })
+                                                          .ToList()));
+                        }
+                        <script>window.__sousCats = @Html.Raw(sousCatsJson);</script>
+
+                        <!-- Description -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold mb-0">Description <span class="text-danger">*</span></label>
+                                <button type="button" id="btnGenererDesc" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-wand-magic-sparkles me-1"></i>
+                                    <span class="lbl">Générer avec l'IA</span>
+                                </button>
+                            </div>
+                            <textarea name="description" id="descriptionField" class="form-control" rows="5"
+                                      required maxlength="2000"
+                                      placeholder="Description détaillée : specs techniques, caractéristiques..."></textarea>
+                            <small class="text-muted">Remplissez Nom + Marque + Catégorie puis cliquez sur "Générer avec l'IA".</small>
+                        </div>
+
+                        <!-- Prix & Stock -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Prix normal (MAD) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" name="prix" class="form-control"
+                                           step="0.01" min="0" required placeholder="0.00" />
+                                    <span class="input-group-text">MAD</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Prix promo (MAD)</label>
+                                <div class="input-group">
+                                    <input type="number" name="prixPromo" class="form-control"
+                                           step="0.01" min="0" placeholder="Vide = aucune promo" />
+                                    <span class="input-group-text">MAD</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Stock initial <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" name="stock" class="form-control"
+                                           min="0" required placeholder="0" value="0" />
+                                    <span class="input-group-text">unités</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Taux TVA</label>
+                                <select name="tauxTVA" class="form-select">
+                                    <option value="20" selected>20% (standard)</option>
+                                    <option value="14">14% (transport)</option>
+                                    <option value="10">10% (restauration / banque)</option>
+                                    <option value="7">7% (produits essentiels)</option>
+                                    <option value="0">0% (exonéré)</option>
+                                </select>
+                                <small class="text-muted">Les prix saisis ci-dessus incluent la TVA.</small>
+                            </div>
+                        </div>
+
+                        <!-- Photo -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Photo du produit</label>
+
+                            <!-- Upload fichier -->
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">Télécharger une photo (JPG, PNG, WEBP…)</label>
+                                <input type="file" name="imageFile" id="imageFileInput"
+                                       class="form-control"
+                                       accept=".jpg,.jpeg,.png,.gif,.webp,.svg" />
+                                <div class="form-text">Formats acceptés : JPG, PNG, WEBP, GIF, SVG — max 10 Mo</div>
+                            </div>
+
+                            <!-- OU URL manuelle -->
+                            <div class="mt-2">
+                                <label class="form-label small text-muted">Ou saisir une URL d'image</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-link"></i></span>
+                                    <input type="text" name="imageUrl" id="imageUrlInput"
+                                           class="form-control"
+                                           placeholder="https://... ou /images/produits/nom.svg" />
+                                    <button type="button" class="btn btn-outline-secondary"
+                                            onclick="previewFromUrl()">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statut -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="card border rounded p-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="estActif" id="estActif" value="true" checked />
+                                        <label class="form-check-label fw-semibold" for="estActif">
+                                            <i class="fas fa-eye me-1 text-success"></i>Produit actif
+                                        </label>
+                                        <div class="text-muted small">Visible dans la boutique</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border rounded p-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="estVedette" id="estVedette" value="true" />
+                                        <label class="form-check-label fw-semibold" for="estVedette">
+                                            <i class="fas fa-star me-1 text-warning"></i>Produit vedette
+                                        </label>
+                                        <div class="text-muted small">Mis en avant sur l'accueil</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-save me-2"></i>Enregistrer le produit
+                            </button>
+                            <a href="@ViewBag.AdminBase/produits" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+function previewFromUrl() {
+    const url = document.getElementById('imageUrlInput').value.trim();
+    if (url) document.getElementById('previewImg').src = url;
+}
+
+document.getElementById('imageUrlInput').addEventListener('input', function () {
+    if (this.value.trim()) document.getElementById('previewImg').src = this.value.trim();
+});
+
+(function () {
+    const parentSel = document.getElementById('categorieSelect');
+    const sousSel   = document.getElementById('sousCategorieSelect');
+    if (!parentSel || !sousSel) return;
+    parentSel.addEventListener('change', function () {
+        const subs = (window.__sousCats || {})[this.value] || [];
+        sousSel.innerHTML = '<option value="">-- Aucune --</option>' +
+            subs.map(s => `<option value="${s.id}">${s.nom}</option>`).join('');
+        sousSel.disabled = subs.length === 0;
+    });
+})();
+
+document.getElementById('imageFileInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('imageUrlInput').value = '';
+    };
+    reader.readAsDataURL(file);
+});
+
+// Génération description IA
+document.getElementById('btnGenererDesc')?.addEventListener('click', async function () {
+    const nom    = document.querySelector('[name="nom"]')?.value.trim();
+    const marque = document.querySelector('[name="marque"]')?.value.trim();
+    const catId  = document.querySelector('[name="categorieId"]')?.value;
+    const prix   = parseFloat(document.querySelector('[name="prix"]')?.value) || null;
+    if (!nom || !marque) { alert("Veuillez d'abord remplir le Nom et la Marque."); return; }
+
+    const btn = this;
+    const lbl = btn.querySelector('.lbl');
+    const txtOriginal = lbl.textContent;
+    btn.disabled = true;
+    lbl.textContent = 'Génération en cours…';
+    btn.querySelector('i').className = 'fas fa-spinner fa-spin me-1';
+
+    try {
+        const res = await fetch('/api/admin/ia/description', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nom, marque, categorieId: catId ? parseInt(catId) : null, prix })
+        });
+        const data = await res.json();
+        if (!res.ok) { alert(data.erreur || 'Erreur génération.'); return; }
+        document.getElementById('descriptionField').value = data.description;
+    } catch {
+        alert('Connexion impossible au service IA.');
+    } finally {
+        btn.disabled = false;
+        lbl.textContent = txtOriginal;
+        btn.querySelector('i').className = 'fas fa-wand-magic-sparkles me-1';
+    }
+});
+</script>
+}

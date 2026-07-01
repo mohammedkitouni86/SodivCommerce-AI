@@ -1,0 +1,129 @@
+@using TechVisionMaroc.Models
+@{
+    ViewData["Title"] = "Mes abonnements";
+    var abos = (List<Abonnement>)ViewBag.Abonnements;
+    string Freq(FrequenceAbonnement f) => f switch {
+        FrequenceAbonnement.Hebdo15 => "Tous les 15 jours",
+        FrequenceAbonnement.Mensuel => "Mensuel",
+        FrequenceAbonnement.Bimestriel => "Tous les 2 mois",
+        FrequenceAbonnement.Trimestriel => "Trimestriel",
+        _ => f.ToString()
+    };
+    string Statut(StatutAbonnement s) => s switch {
+        StatutAbonnement.Actif => "Actif",
+        StatutAbonnement.Pause => "En pause",
+        StatutAbonnement.Annule => "Annulé",
+        _ => s.ToString()
+    };
+    string CouleurStatut(StatutAbonnement s) => s switch {
+        StatutAbonnement.Actif => "success",
+        StatutAbonnement.Pause => "warning",
+        StatutAbonnement.Annule => "secondary",
+        _ => "dark"
+    };
+}
+
+<div class="container py-5">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/Compte" class="text-decoration-none">Mon compte</a></li>
+            <li class="breadcrumb-item active">Abonnements</li>
+        </ol>
+    </nav>
+
+    <div class="mb-4">
+        <h2 class="fw-bold mb-1"><i class="fas fa-redo text-info me-2"></i>Subscribe &amp; Save</h2>
+        <p class="text-muted">Recevez automatiquement vos consommables (cartouches, papier, fournitures) avec <strong class="text-success">-5%</strong></p>
+    </div>
+
+    @if (TempData["Success"] != null) { <div class="alert alert-success">@TempData["Success"]</div> }
+
+    @if (!abos.Any())
+    {
+        <div class="card border-0 shadow-sm bg-gradient text-white" style="background:linear-gradient(135deg,#0d6efd,#6610f2)!important;">
+            <div class="card-body p-5">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="fw-bold mb-2"><i class="fas fa-magic me-2"></i>Économisez du temps + 5% sur vos commandes récurrentes</h4>
+                        <p class="opacity-90 mb-3">Idéal pour les cartouches d'encre, ramettes A4, stylos, et autres consommables réguliers.</p>
+                        <ul class="list-unstyled mb-0">
+                            <li><i class="fas fa-check me-2"></i>Livraison automatique selon la fréquence choisie</li>
+                            <li><i class="fas fa-check me-2"></i>Remise de 5% à vie sur chaque livraison</li>
+                            <li><i class="fas fa-check me-2"></i>Pause ou annulation à tout moment</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="fas fa-truck-loading fa-6x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="/Catalogue" class="btn btn-primary btn-lg">
+                <i class="fas fa-shopping-bag me-2"></i>Choisir des produits à abonner
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var a in abos)
+            {
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex gap-3 mb-3">
+                                <img src="@(string.IsNullOrEmpty(a.Produit?.ImageUrl) ? "/images/placeholder.png" : a.Produit.ImageUrl)"
+                                     alt="@a.Produit?.Nom" style="width:80px;height:80px;object-fit:cover;border-radius:10px;" />
+                                <div class="flex-grow-1">
+                                    <span class="badge bg-@CouleurStatut(a.Statut) mb-1">@Statut(a.Statut)</span>
+                                    <h6 class="fw-bold mb-1">@a.Produit?.Nom</h6>
+                                    <small class="text-muted">@a.Quantite × @((a.Produit?.Prix ?? 0).ToString("N0")) MAD</small>
+                                </div>
+                            </div>
+
+                            <div class="row text-center mb-3">
+                                <div class="col-4">
+                                    <div class="text-muted small">Fréquence</div>
+                                    <div class="fw-bold">@Freq(a.Frequence)</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-muted small">Remise</div>
+                                    <div class="fw-bold text-success">-@a.RemiseAbonnement%</div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-muted small">Prochaine</div>
+                                    <div class="fw-bold">@a.ProchaineLivraison.ToString("dd/MM")</div>
+                                </div>
+                            </div>
+
+                            <small class="text-muted d-block mb-2">
+                                <i class="fas fa-history me-1"></i>@a.NbCommandesGenerees commande(s) générée(s)
+                            </small>
+
+                            @if (a.Statut != StatutAbonnement.Annule)
+                            {
+                                <div class="d-flex gap-2">
+                                    <form method="post" action="/Compte/abonnements/@a.Id/pause" class="flex-grow-1">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                                            <i class="fas @(a.Statut == StatutAbonnement.Actif ? "fa-pause" : "fa-play")"></i>
+                                            @(a.Statut == StatutAbonnement.Actif ? "Pause" : "Reprendre")
+                                        </button>
+                                    </form>
+                                    <form method="post" action="/Compte/abonnements/@a.Id/annuler" class="flex-grow-1"
+                                          onsubmit="return confirm('Annuler définitivement cet abonnement ?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                            <i class="fas fa-times me-1"></i>Annuler
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

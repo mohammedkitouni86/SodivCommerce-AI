@@ -1,0 +1,180 @@
+@model List<TechVisionMaroc.Models.EvaluationFraude>
+@using TechVisionMaroc.Models
+@using TechVisionMaroc.Services
+@{
+    ViewData["Title"] = "Détection de fraude";
+    var stats = (dynamic)ViewBag.Stats;
+    NiveauRisque? filtreNiveau = ViewBag.Niveau as NiveauRisque?;
+    DecisionFraude? filtreDecision = ViewBag.Decision as DecisionFraude?;
+
+    string NiveauBadge(NiveauRisque n) => n switch
+    {
+        NiveauRisque.Critique => "bg-danger",
+        NiveauRisque.Eleve    => "bg-warning text-dark",
+        NiveauRisque.Modere   => "bg-info text-dark",
+        _                     => "bg-success"
+    };
+    string DecisionBadge(DecisionFraude d) => d switch
+    {
+        DecisionFraude.Bloquee   => "bg-danger",
+        DecisionFraude.AReviser  => "bg-warning text-dark",
+        DecisionFraude.Validee   => "bg-success",
+        _                        => "bg-secondary"
+    };
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4 d-flex align-items-center gap-3">
+        <h4 class="mb-0 fw-bold"><i class="fas fa-shield-virus text-danger me-2"></i>Détection de fraude</h4>
+        <span class="text-muted small">Score 0–100 calculé sur 14 règles métier</span>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Statistiques -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2"><div class="card border-0 shadow-sm border-start border-danger border-4"><div class="card-body py-3">
+            <div class="text-muted small">Critique</div>
+            <div class="h3 fw-bold text-danger mb-0">@stats.Critique</div>
+        </div></div></div>
+        <div class="col-md-2"><div class="card border-0 shadow-sm border-start border-warning border-4"><div class="card-body py-3">
+            <div class="text-muted small">Élevé</div>
+            <div class="h3 fw-bold text-warning mb-0">@stats.Eleve</div>
+        </div></div></div>
+        <div class="col-md-2"><div class="card border-0 shadow-sm border-start border-info border-4"><div class="card-body py-3">
+            <div class="text-muted small">Modéré</div>
+            <div class="h3 fw-bold text-info mb-0">@stats.Modere</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm bg-danger text-white"><div class="card-body py-3">
+            <div class="small">🚫 Auto-bloquées</div>
+            <div class="h3 fw-bold mb-0">@stats.Bloquees</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm bg-warning text-dark"><div class="card-body py-3">
+            <div class="small">⚠️ À réviser</div>
+            <div class="h3 fw-bold mb-0">@stats.AReviser</div>
+        </div></div></div>
+    </div>
+
+    <!-- Filtres -->
+    <form method="get" class="d-flex gap-2 mb-3">
+        <select name="niveau" class="form-select form-select-sm" style="max-width:170px" onchange="this.form.submit()">
+            <option value="">Tous niveaux</option>
+            @foreach (var n in Enum.GetValues<NiveauRisque>())
+            {
+                if (filtreNiveau == n) { <option value="@n" selected>@n</option> }
+                else { <option value="@n">@n</option> }
+            }
+        </select>
+        <select name="decision" class="form-select form-select-sm" style="max-width:170px" onchange="this.form.submit()">
+            <option value="">Toutes décisions</option>
+            @foreach (var d in Enum.GetValues<DecisionFraude>())
+            {
+                if (filtreDecision == d) { <option value="@d" selected>@d</option> }
+                else { <option value="@d">@d</option> }
+            }
+        </select>
+        <a href="@ViewBag.AdminBase/fraude" class="btn btn-outline-secondary btn-sm">Réinitialiser</a>
+    </form>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Score</th>
+                        <th>Niveau</th>
+                        <th>Décision</th>
+                        <th>Commande</th>
+                        <th>Client</th>
+                        <th>Total</th>
+                        <th>Raisons</th>
+                        <th>Date</th>
+                        <th style="min-width:280px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="9" class="text-center text-muted py-4">Aucune évaluation correspondant à ce filtre.</td></tr>
+                }
+                else
+                {
+                    foreach (var e in Model)
+                    {
+                        var raisons = string.IsNullOrEmpty(e.Raisons)
+                            ? new List<RegleFraude>()
+                            : System.Text.Json.JsonSerializer.Deserialize<List<RegleFraude>>(e.Raisons) ?? new();
+                        var couleurScore = e.Score >= 80 ? "danger" : e.Score >= 55 ? "warning" : e.Score >= 30 ? "info" : "success";
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height:6px;width:60px">
+                                        <div class="progress-bar bg-@couleurScore" style="width:@(e.Score)%"></div>
+                                    </div>
+                                    <span class="fw-bold text-@couleurScore">@e.Score</span>
+                                </div>
+                            </td>
+                            <td><span class="badge @NiveauBadge(e.Niveau)">@e.Niveau</span></td>
+                            <td><span class="badge @DecisionBadge(e.Decision)">@e.Decision</span></td>
+                            <td class="fw-semibold text-primary">@e.Commande?.NumeroCommande</td>
+                            <td class="small">
+                                @e.Commande?.Utilisateur?.Prenom @e.Commande?.Utilisateur?.Nom<br />
+                                <span class="text-muted">@e.Commande?.Utilisateur?.Email</span>
+                            </td>
+                            <td class="fw-bold">@(e.Commande?.Total.ToString("N0") ?? "—") MAD</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#raisons-@e.Id">
+                                    @raisons.Count règle@(raisons.Count > 1 ? "s" : "")
+                                </button>
+                                <div class="collapse mt-2" id="raisons-@e.Id">
+                                    <ul class="small mb-0 ps-3">
+                                        @foreach (var r in raisons.OrderByDescending(x => x.Poids))
+                                        {
+                                            <li><strong class="text-danger">+@r.Poids</strong> @r.Description <span class="text-muted">(@r.Code)</span></li>
+                                        }
+                                    </ul>
+                                    @if (!string.IsNullOrEmpty(e.IpAdresse))
+                                    {
+                                        <div class="text-muted small mt-1"><i class="fas fa-network-wired me-1"></i>@e.IpAdresse</div>
+                                    }
+                                </div>
+                            </td>
+                            <td class="text-muted small">@e.DateEvaluation.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                            <td>
+                                <form method="post" action="@ViewBag.AdminBase/fraude/decision" class="d-flex gap-1 flex-wrap">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <input type="text" name="commentaire" class="form-control form-control-sm"
+                                           placeholder="Commentaire (optionnel)" style="min-width:140px" />
+                                    <button type="submit" name="decision" value="Validee"
+                                            class="btn btn-sm btn-success" title="Valider la commande">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button type="submit" name="decision" value="Bloquee"
+                                            class="btn btn-sm btn-danger" title="Bloquer / Annuler">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                    <button type="submit" name="decision" value="AReviser"
+                                            class="btn btn-sm btn-warning" title="Mettre en attente">
+                                        <i class="fas fa-clock"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

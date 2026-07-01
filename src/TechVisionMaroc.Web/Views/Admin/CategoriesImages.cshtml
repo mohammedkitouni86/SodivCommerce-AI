@@ -1,0 +1,105 @@
+@using TechVisionMaroc.Models
+@{
+    ViewData["Title"] = "Images des catégories";
+    Layout = "_Layout";
+    var categories = (List<Categorie>)ViewBag.Categories;
+
+    // Construire l'arborescence
+    var racines = categories.Where(c => c.ParentId == null).OrderBy(c => c.Nom).ToList();
+    var enfants = categories.Where(c => c.ParentId != null).GroupBy(c => c.ParentId!.Value).ToDictionary(g => g.Key, g => g.ToList());
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="fas fa-images text-primary me-2"></i>Images des catégories</h2>
+            <p class="text-muted small mb-0">Gérer les images affichées dans le mega-menu et les pages catégorie.</p>
+        </div>
+        <a href="@ViewBag.AdminBase/categories" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Retour aux catégories
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null) { <div class="alert alert-success">@TempData["Success"]</div> }
+    @if (TempData["Error"] != null)   { <div class="alert alert-danger">@TempData["Error"]</div> }
+
+    <!-- Recherche rapide -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+            <input type="text" id="searchCat" class="form-control" placeholder="🔍 Rechercher une catégorie..." />
+        </div>
+    </div>
+
+    <!-- Liste catégorisée -->
+    <div class="row g-3" id="catGrid">
+        @foreach (var racine in racines)
+        {
+            <!-- Catégorie principale -->
+            <div class="col-12 cat-row" data-nom="@racine.Nom.ToLower()">
+                <div class="card shadow-sm border-primary border-2">
+                    <div class="card-body">
+                        @await Html.PartialAsync("_CatImageRow", racine)
+                    </div>
+                </div>
+            </div>
+
+            @if (enfants.ContainsKey(racine.Id))
+            {
+                @foreach (var enfant in enfants[racine.Id].OrderBy(e => e.Nom))
+                {
+                    <div class="col-12 cat-row" data-nom="@enfant.Nom.ToLower() @racine.Nom.ToLower()">
+                        <div class="card shadow-sm" style="margin-left: 30px;">
+                            <div class="card-body">
+                                @await Html.PartialAsync("_CatImageRow", enfant)
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (enfants.ContainsKey(enfant.Id))
+                    {
+                        @foreach (var ssEnfant in enfants[enfant.Id].OrderBy(e => e.Nom))
+                        {
+                            <div class="col-12 cat-row" data-nom="@ssEnfant.Nom.ToLower() @enfant.Nom.ToLower() @racine.Nom.ToLower()">
+                                <div class="card shadow-sm border-light" style="margin-left: 60px;">
+                                    <div class="card-body py-2">
+                                        @await Html.PartialAsync("_CatImageRow", ssEnfant)
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                }
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .cat-image-preview {
+        width: 80px; height: 80px;
+        object-fit: cover;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    .cat-image-empty {
+        width: 80px; height: 80px;
+        border-radius: 12px;
+        border: 2px dashed #cbd5e1;
+        display: flex; align-items: center; justify-content: center;
+        background: #f8fafc;
+        color: #94a3b8;
+        font-size: 1.5rem;
+    }
+</style>
+
+<script>
+// Recherche temps réel
+document.getElementById('searchCat').addEventListener('input', function(e) {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('.cat-row').forEach(row => {
+        const nom = row.dataset.nom || '';
+        row.style.display = (!q || nom.includes(q)) ? '' : 'none';
+    });
+});
+</script>

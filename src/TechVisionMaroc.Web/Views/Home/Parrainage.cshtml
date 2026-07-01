@@ -1,0 +1,115 @@
+@{
+    ViewData["Title"] = "Programme de parrainage";
+    var uid = Context.Session.GetInt32("UtilisateurId");
+    string codeParrainage = uid.HasValue ? $"SODIV{uid.Value:D5}" : "";
+    string lienParrainage = uid.HasValue
+        ? $"{Context.Request.Scheme}://{Context.Request.Host}/Account/Inscription?parrain={codeParrainage}"
+        : "";
+    string waText = uid.HasValue
+        ? Uri.EscapeDataString($"Découvre SODIV Bureau et profite de 50 MAD offerts : {lienParrainage}")
+        : "";
+}
+
+<!-- Hero -->
+<section class="bg-gradient-primary text-white py-5">
+    <div class="container py-3 text-center">
+        <i class="fas fa-gift fa-4x mb-3 text-warning"></i>
+        <h1 class="display-4 fw-bold">Parrainage</h1>
+        <p class="lead opacity-90">Invitez un ami, gagnez ensemble <strong class="text-warning">50 MAD</strong> chacun !</p>
+    </div>
+</section>
+
+<div class="container py-5">
+
+    <div class="text-center mb-5">
+        <h2 class="fw-bold">Comment ça marche ?</h2>
+        <p class="text-muted">3 étapes simples pour gagner ensemble</p>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body p-4">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:60px; height:60px;">
+                        <span class="fs-3 fw-bold">1</span>
+                    </div>
+                    <h5 class="fw-bold">Partagez votre lien</h5>
+                    <p class="small text-muted">Copiez votre lien personnalisé et envoyez-le à vos amis par WhatsApp, email ou réseaux sociaux.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body p-4">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:60px; height:60px;">
+                        <span class="fs-3 fw-bold">2</span>
+                    </div>
+                    <h5 class="fw-bold">Votre ami commande</h5>
+                    <p class="small text-muted">Votre filleul s'inscrit via votre lien et passe sa première commande de minimum 500 MAD.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 text-center">
+                <div class="card-body p-4">
+                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:60px; height:60px;">
+                        <i class="fas fa-gift fs-3"></i>
+                    </div>
+                    <h5 class="fw-bold">Vous gagnez 50 MAD chacun</h5>
+                    <p class="small text-muted">50 MAD de crédit fidélité sont automatiquement ajoutés à vos deux comptes, utilisables sur votre prochaine commande.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow bg-light">
+        <div class="card-body p-4 p-md-5 text-center">
+            @if (uid.HasValue)
+            {
+                <h4 class="fw-bold mb-3">Votre code de parrainage personnel</h4>
+                <div class="bg-white border border-primary border-2 rounded-3 p-3 mb-3 d-inline-block">
+                    <span class="fs-3 fw-bold text-primary">@codeParrainage</span>
+                </div>
+                <div class="input-group mb-3 mx-auto" style="max-width:600px;">
+                    <input type="text" class="form-control" id="lienParrain" value="@lienParrainage" readonly />
+                    <button class="btn btn-primary" onclick="copierLien()"><i class="fas fa-copy me-1"></i>Copier</button>
+                </div>
+                <a href="https://wa.me/?text=@waText" target="_blank" class="btn btn-success">
+                    <i class="fab fa-whatsapp me-1"></i>Partager WhatsApp
+                </a>
+            }
+            else
+            {
+                <p class="text-muted mb-3"><i class="fas fa-user-lock fa-3x text-muted d-block mb-3"></i></p>
+                <h4 class="fw-bold mb-3">Connectez-vous pour obtenir votre lien</h4>
+                <p class="text-muted">Le programme de parrainage est réservé aux clients inscrits.</p>
+                <a href="/Account/Inscription" class="btn btn-primary btn-lg me-2">Créer un compte</a>
+                <a href="/Account/Connexion" class="btn btn-outline-primary btn-lg">Se connecter</a>
+            }
+        </div>
+    </div>
+
+    <div class="mt-5">
+        <h5 class="fw-bold text-primary">Conditions du programme</h5>
+        <ul class="text-muted small">
+            <li>Le filleul doit être un nouveau client (pas de compte SODIV existant)</li>
+            <li>Sa première commande doit être d'un montant minimum de 500 MAD</li>
+            <li>Le crédit de 50 MAD est ajouté au compte fidélité après confirmation de la livraison</li>
+            <li>Aucune limite sur le nombre de parrainages par client</li>
+            <li>Le crédit fidélité ne peut être converti en espèces</li>
+            <li>SODIV Bureau se réserve le droit de modifier ou suspendre le programme</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    function copierLien(){
+        var i = document.getElementById('lienParrain');
+        if (!i) return;
+        i.select(); document.execCommand('copy');
+        var b = event.target.closest('button');
+        if (!b) return;
+        b.innerHTML = '<i class="fas fa-check me-1"></i>Copié !';
+        setTimeout(function(){ b.innerHTML = '<i class="fas fa-copy me-1"></i>Copier'; }, 2000);
+    }
+</script>

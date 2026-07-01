@@ -1,0 +1,111 @@
+@model List<TechVisionMaroc.Models.AuditLog>
+@{
+    ViewData["Title"] = "Journal d'audit";
+    int total = ViewBag.Total ?? 0;
+    int page  = ViewBag.Page  ?? 1;
+    int pages = (int)Math.Ceiling(total / 50.0);
+    string? action = ViewBag.Action as string;
+    var actions = ViewBag.Actions as List<string> ?? new();
+    var baseUrl = (ViewBag.AdminBase as string) ?? "/admin";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3 fw-bold mb-0"><i class="fas fa-clipboard-list text-primary me-2"></i>Journal d'audit</h1>
+            <p class="text-muted mb-0">@total entrée(s)</p>
+        </div>
+        <form method="get" class="d-flex gap-2">
+            <select name="action" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Toutes les actions</option>
+                @foreach (var a in actions)
+                {
+                    if (a == action)
+                    {
+                        <option value="@a" selected>@a</option>
+                    }
+                    else
+                    {
+                        <option value="@a">@a</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Action</th>
+                        <th>Cible</th>
+                        <th>IP</th>
+                        <th>Détails</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in Model)
+                    {
+                        <tr>
+                            <td class="text-muted small text-nowrap">@l.Date.ToLocalTime().ToString("dd/MM/yy HH:mm:ss")</td>
+                            <td>@l.UtilisateurEmail</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(l.Role))
+                                {
+                                    <span class="badge bg-secondary">@l.Role</span>
+                                }
+                            </td>
+                            <td><code>@l.Action</code></td>
+                            <td>@l.Cible</td>
+                            <td class="text-muted small">@l.IpAdresse</td>
+                            <td class="text-muted small">@l.Details</td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="7" class="text-center text-muted py-4">Aucune entrée.</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (pages > 1)
+    {
+        int delta = 2;
+        int debut = Math.Max(1, page - delta);
+        int finP  = Math.Min(pages, page + delta);
+        string url(int p) => $"?page={p}&action={action}";
+
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(page <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@(page <= 1 ? "#" : url(page - 1))"><i class="fas fa-chevron-left"></i></a>
+                </li>
+                @if (debut > 1)
+                {
+                    <li class="page-item"><a class="page-link" href="@url(1)">1</a></li>
+                    if (debut > 2) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                }
+                @for (int i = debut; i <= finP; i++)
+                {
+                    <li class="page-item @(i == page ? "active" : "")">
+                        <a class="page-link" href="@url(i)">@i</a>
+                    </li>
+                }
+                @if (finP < pages)
+                {
+                    if (finP < pages - 1) { <li class="page-item disabled"><span class="page-link">…</span></li> }
+                    <li class="page-item"><a class="page-link" href="@url(pages)">@pages</a></li>
+                }
+                <li class="page-item @(page >= pages ? "disabled" : "")">
+                    <a class="page-link" href="@(page >= pages ? "#" : url(page + 1))"><i class="fas fa-chevron-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

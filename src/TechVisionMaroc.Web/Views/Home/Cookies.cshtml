@@ -1,0 +1,87 @@
+@{ ViewData["Title"] = "Politique de cookies"; }
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="text-center mb-5">
+                <i class="fas fa-cookie-bite fa-3x text-primary mb-3"></i>
+                <h1 class="fw-bold">Politique de gestion des cookies</h1>
+                <p class="text-muted">Comment et pourquoi nous utilisons les cookies</p>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-md-5">
+
+                    <h4 class="fw-bold text-primary">Qu'est-ce qu'un cookie ?</h4>
+                    <p>Un cookie est un petit fichier texte enregistré sur votre appareil (ordinateur, smartphone, tablette) lors de votre visite sur un site web. Il permet de stocker des informations relatives à votre navigation et de vous offrir une expérience plus fluide.</p>
+
+                    <h4 class="fw-bold text-primary mt-4">Cookies utilisés sur SODIV Bureau</h4>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead class="table-primary">
+                                <tr><th>Nom</th><th>Finalité</th><th>Durée</th><th>Type</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>.AspNetCore.Session</code></td>
+                                    <td>Maintien de la session utilisateur (panier, connexion)</td>
+                                    <td>30 minutes</td>
+                                    <td><span class="badge bg-success">Essentiel</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>.AspNetCore.Antiforgery</code></td>
+                                    <td>Protection contre les attaques CSRF (sécurité)</td>
+                                    <td>Session</td>
+                                    <td><span class="badge bg-success">Essentiel</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>sodiv_cookie_consent</code></td>
+                                    <td>Mémorise votre choix concernant les cookies</td>
+                                    <td>13 mois</td>
+                                    <td><span class="badge bg-success">Essentiel</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>sodiv_lang</code></td>
+                                    <td>Mémorise la langue d'affichage choisie</td>
+                                    <td>1 an</td>
+                                    <td><span class="badge bg-info">Préférence</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>_analytics</code></td>
+                                    <td>Statistiques anonymisées de fréquentation</td>
+                                    <td>13 mois</td>
+                                    <td><span class="badge bg-warning text-dark">Statistique</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="fw-bold text-primary mt-4">Cookies tiers</h4>
+                    <p>Aucun cookie publicitaire tiers n'est déposé sans votre consentement explicite. Les seuls cookies tiers susceptibles d'être présents proviennent de :</p>
+                    <ul>
+                        <li><strong>CMI</strong> (page de paiement uniquement)</li>
+                        <li><strong>WhatsApp</strong> (si vous cliquez sur le bouton de contact)</li>
+                    </ul>
+
+                    <h4 class="fw-bold text-primary mt-4">Comment gérer vos cookies ?</h4>
+                    <p>Vous pouvez à tout moment :</p>
+                    <ul>
+                        <li><strong>Accepter ou refuser</strong> via le bandeau affiché à votre première visite</li>
+                        <li><strong>Modifier votre choix</strong> en cliquant sur le bouton ci-dessous</li>
+                        <li><strong>Bloquer tous les cookies</strong> dans les paramètres de votre navigateur (note : certaines fonctionnalités essentielles seront impactées)</li>
+                    </ul>
+
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="document.cookie='sodiv_cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; location.reload();">
+                            <i class="fas fa-redo me-2"></i>Réinitialiser mon choix
+                        </button>
+                    </div>
+
+                    <hr class="my-4" />
+                    <p class="text-muted small mb-0">Conformément à la loi n° 09-08. Dernière mise à jour : @DateTime.Now.ToString("dd MMMM yyyy")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

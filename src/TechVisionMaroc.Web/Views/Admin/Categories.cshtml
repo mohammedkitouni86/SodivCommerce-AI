@@ -1,0 +1,163 @@
+@model List<TechVisionMaroc.Models.Categorie>
+
+@{
+    ViewData["Title"] = "Gestion Catégories";
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0 fw-bold"><i class="fas fa-tags me-2 text-primary"></i>Gestion des Catégories</h4>
+            <div class="d-flex gap-2">
+                @if (ViewBag.EstSuperAdmin == true)
+                {
+                    @if (Model.Any(c => c.Nom == "À reclasser"))
+                    {
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalSupprimerReclasser">
+                            <i class="fas fa-trash me-1"></i>Supprimer « À reclasser »
+                        </button>
+                    }
+                }
+                <a href="@ViewBag.AdminBase/categories/images" class="btn btn-info btn-sm text-white">
+                    <i class="fas fa-images me-1"></i>Images des catégories
+                </a>
+                <a href="@ViewBag.AdminBase/categories/creer" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i>Ajouter une catégorie
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Modal confirmation suppression "À reclasser" -->
+    <div class="modal fade" id="modalSupprimerReclasser" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Supprimer « À reclasser »</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Cette action va supprimer définitivement :</p>
+                    <ul>
+                        <li>La catégorie <strong>« À reclasser »</strong></li>
+                        <li><strong>Tous les produits</strong> qu'elle contient</li>
+                        <li>Leurs <strong>avis</strong>, <strong>wishlists</strong>, lignes de panier/commande associées</li>
+                    </ul>
+                    <div class="alert alert-danger small mb-0">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        Action <strong>irréversible</strong>. Aucune sauvegarde automatique.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <form method="post" action="@ViewBag.AdminBase/categories/supprimer-a-reclasser" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i>Confirmer la suppression
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Icône</th>
+                        <th>Nom</th>
+                        <th>Catégorie parente</th>
+                        <th>Produits</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        <tr>
+                            <td class="text-muted small">#@c.Id</td>
+                            <td>
+                                <div class="bg-primary bg-opacity-10 rounded p-2 d-inline-block">
+                                    <i class="fas @c.IconeClass text-primary"></i>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">@c.Nom</div>
+                                <div class="text-muted small">@c.Slug</div>
+                            </td>
+                            <td>
+                                @if (c.Parent != null)
+                                {
+                                    <span class="badge bg-light text-dark border">
+                                        <i class="fas @c.Parent.IconeClass me-1"></i>@c.Parent.Nom
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary rounded-pill">@c.Produits.Count</span>
+                            </td>
+                            <td>
+                                @if (c.EstActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td>
+                                <a href="@ViewBag.AdminBase/categories/modifier/@c.Id"
+                                   class="btn btn-outline-primary btn-sm" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                @if (ViewBag.EstSuperAdmin == true)
+                                {
+                                    <form method="post" action="@ViewBag.AdminBase/categories/supprimer/@c.Id"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Supprimer « @c.Nom » ? Cette action est irréversible.')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Aucune catégorie trouvée.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

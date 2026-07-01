@@ -1,0 +1,68 @@
+@{
+    ViewData["Title"] = "Authentification à deux facteurs";
+    var secret = ViewBag.Secret as string;
+    var uri = ViewBag.OtpAuthUri as string;
+    var active = (bool)(ViewBag.Active ?? false);
+    var qrSrc = $"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={Uri.EscapeDataString(uri ?? "")}";
+    var baseUrl = (ViewBag.AdminBase as string) ?? "/admin";
+}
+
+<div class="container py-4" style="max-width:720px">
+    <h1 class="h3 fw-bold mb-4"><i class="fas fa-shield-halved text-success me-2"></i>Authentification à deux facteurs (2FA)</h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    @if (active)
+    {
+        <div class="card border-success shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h4 class="fw-bold">2FA Activée</h4>
+                <p class="text-muted">À chaque connexion admin, vous devrez entrer un code à 6 chiffres de votre application Authenticator.</p>
+                <form method="post" action="@baseUrl/2fa/desactiver" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Désactiver la 2FA ?');">
+                        <i class="fas fa-times me-1"></i>Désactiver la 2FA
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <ol>
+                    <li>Installez <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong> ou <strong>Authy</strong> sur votre téléphone.</li>
+                    <li>Scannez le QR code ci-dessous (ou tapez le secret manuellement).</li>
+                    <li>Entrez le code à 6 chiffres affiché par l'application pour activer la 2FA.</li>
+                </ol>
+                <div class="text-center my-4">
+                    <img src="@qrSrc" alt="QR Code" class="border rounded" />
+                    <div class="mt-3 small text-muted">Ou saisissez le secret manuellement :</div>
+                    <code class="user-select-all bg-light px-3 py-1 rounded">@secret</code>
+                </div>
+                <form method="post" action="@baseUrl/2fa/activer" class="row g-2 justify-content-center">
+                    @Html.AntiForgeryToken()
+                    <div class="col-auto">
+                        <input name="code" type="text" maxlength="6" pattern="\d{6}" required
+                               class="form-control form-control-lg text-center" style="width:160px;letter-spacing:6px"
+                               placeholder="000000" autocomplete="off" />
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-check me-1"></i>Activer la 2FA
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,195 @@
+@model List<TechVisionMaroc.Models.Produit>
+@{
+    ViewData["Title"] = "Catalogue Produits";
+    var categories = ViewBag.Categories as List<TechVisionMaroc.Models.Categorie> ?? new();
+    int total = ViewBag.Total ?? 0;
+    int page = ViewBag.Page ?? 1;
+    int pages = ViewBag.Pages ?? 1;
+    string? q = ViewBag.Q;
+    int? catId = ViewBag.CategorieId;
+    string vue = ViewBag.Vue ?? "grille";
+}
+
+<div class="bg-light py-3 border-bottom">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/">Accueil</a></li>
+                <li class="breadcrumb-item active">Catalogue</li>
+                @if (!string.IsNullOrEmpty(q))
+                {
+                    <li class="breadcrumb-item active">Recherche : "@q"</li>
+                }
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+
+        <!-- Liste produits (pleine largeur) -->
+        <div class="col-12">
+            <!-- En-tête résultats -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <div>
+                    <span class="fw-semibold">@total produit@(total > 1 ? "s" : "")</span>
+                    @if (!string.IsNullOrEmpty(q))
+                    {
+                        <span class="text-muted"> pour "@q"</span>
+                    }
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <!-- Tri -->
+                    <select class="form-select form-select-sm" onchange="appliquerTri(this.value)">
+                        <option value="" selected="@(ViewBag.Tri == null)">Trier par</option>
+                        <option value="prix_asc" selected="@(ViewBag.Tri == "prix_asc")">Prix croissant</option>
+                        <option value="prix_desc" selected="@(ViewBag.Tri == "prix_desc")">Prix décroissant</option>
+                        <option value="note" selected="@(ViewBag.Tri == "note")">Meilleures notes</option>
+                        <option value="ventes" selected="@(ViewBag.Tri == "ventes")">Plus vendus</option>
+                    </select>
+                    <!-- Vue -->
+                    <div class="btn-group btn-group-sm">
+                        <a href="?@(Context.Request.QueryString.ToString().Replace("vue=liste", "").Replace("vue=grille", ""))&vue=grille"
+                           class="btn @(vue == "grille" ? "btn-primary" : "btn-outline-secondary")">
+                            <i class="fas fa-th"></i>
+                        </a>
+                        <a href="?@(Context.Request.QueryString.ToString().Replace("vue=liste", "").Replace("vue=grille", ""))&vue=liste"
+                           class="btn @(vue == "liste" ? "btn-primary" : "btn-outline-secondary")">
+                            <i class="fas fa-list"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Produits -->
+            @if (!Model.Any())
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                    <h4>Aucun produit trouvé</h4>
+                    <p class="text-muted">Essayez d'autres termes ou filtres</p>
+                    <a href="/Catalogue" class="btn btn-primary">Voir tous les produits</a>
+                </div>
+            }
+            else if (vue == "liste")
+            {
+                <div class="d-flex flex-column gap-3">
+                    @foreach (var p in Model)
+                    {
+                        <div class="card border-0 shadow-sm hover-lift">
+                            <div class="row g-0">
+                                <div class="col-md-3">
+                                    <a href="/Produit/Details/@p.Id">
+                                        <img src="@(string.IsNullOrEmpty(p.ImageUrl) ? "/images/placeholder.svg" : p.ImageUrl)"
+                                             class="img-fluid rounded-start h-100 object-fit-cover" alt="@p.Nom" />
+                                    </a>
+                                </div>
+                                <div class="col-md-9">
+                                    <div class="card-body">
+                                        <div class="text-muted small">@p.Marque &bull; @p.Categorie?.Nom</div>
+                                        <h5 class="fw-semibold"><a href="/Produit/Details/@p.Id" class="text-dark text-decoration-none">@p.Nom</a></h5>
+                                        <p class="text-muted small">@(p.Description.Length > 120 ? p.Description[..120] + "…" : p.Description)</p>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="fw-bold text-primary fs-5">@((p.PrixPromo ?? p.Prix).ToString("N2")) MAD</span>
+                                            @if (p.Stock > 0)
+                                            {
+                                                <form asp-controller="Panier" asp-action="Ajouter" method="post">
+                                                    <input type="hidden" name="produitId" value="@p.Id" />
+                                                    <button type="submit" class="btn btn-primary btn-sm">
+                                                        <i class="fas fa-cart-plus me-1"></i>Ajouter
+                                                    </button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var p in Model)
+                    {
+                        <div class="col-6 col-md-4">
+                            @await Html.PartialAsync("_CarteProduit", p)
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Pagination -->
+            @if (pages > 1)
+            {
+                <nav class="mt-5">
+                    <ul class="pagination justify-content-center">
+                        @if (page > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="?@BuildQuery(page - 1)"><i class="fas fa-chevron-left"></i></a>
+                            </li>
+                        }
+                        @for (int i = Math.Max(1, page - 2); i <= Math.Min(pages, page + 2); i++)
+                        {
+                            <li class="page-item @(i == page ? "active" : "")">
+                                <a class="page-link" href="?@BuildQuery(i)">@i</a>
+                            </li>
+                        }
+                        @if (page < pages)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="?@BuildQuery(page + 1)"><i class="fas fa-chevron-right"></i></a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    string BuildQuery(int p)
+    {
+        var qs = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(
+            Context.Request.QueryString.ToString());
+        qs["page"] = p.ToString();
+        return string.Join("&", qs.SelectMany(kv => kv.Value.Select(v => $"{kv.Key}={v}")));
+    }
+}
+
+@section Scripts {
+<script>
+function appliquerTri(tri) {
+    const url = new URL(window.location);
+    url.searchParams.set('tri', tri);
+    url.searchParams.set('page', '1');
+    window.location = url.toString();
+}
+
+// ── Prefetch au survol : la page suivante est chargée avant le clic ──
+(function () {
+    const dejaCharges = new Set();
+    function prefetch(href) {
+        if (!href || dejaCharges.has(href)) return;
+        dejaCharges.add(href);
+        const link = document.createElement('link');
+        link.rel = 'prefetch';
+        link.href = href;
+        document.head.appendChild(link);
+    }
+    // Liens de la sidebar (catégories + sous-catégories)
+    document.querySelectorAll('.sidebar-mega a[href^="/Catalogue"], .sidebar-mega-panel-link').forEach(a => {
+        let timer;
+        a.addEventListener('mouseenter', () => {
+            timer = setTimeout(() => prefetch(a.href), 60);
+        });
+        a.addEventListener('mouseleave', () => clearTimeout(timer));
+        a.addEventListener('touchstart', () => prefetch(a.href), { passive: true });
+    });
+})();
+</script>
+}

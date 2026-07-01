@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220" width="300" height="220">
+  <rect width="300" height="220" fill="#F5F3FF"/>
+  <rect x="80" y="50" width="140" height="120" rx="12" fill="#4C1D95" stroke="#7C3AED" stroke-width="2"/>
+  <rect x="90" y="60" width="120" height="100" rx="8" fill="#3B0764"/>
+  <circle cx="150" cy="110" r="30" fill="#5B21B6" stroke="#7C3AED" stroke-width="2"/>
+  <circle cx="150" cy="110" r="15" fill="#2E1065"/>
+  <circle cx="150" cy="110" r="4" fill="#7C3AED"/>
+  <text x="150" y="190" font-family="Arial" font-size="11" fill="#4C1D95" text-anchor="middle" font-weight="bold">WD My Passport 2TB</text>
+</svg>

@@ -1,0 +1,533 @@
+@using TechVisionMaroc.Models
+@{
+    ViewData["Title"] = "Dashboard";
+    var dateDebut = (DateTime)ViewBag.PeriodeDebut;
+    var dateFin   = (DateTime)ViewBag.PeriodeFin;
+    var commandes = (List<Commande>)ViewBag.DernieresCommandes;
+
+    var statuts        = (dynamic)ViewBag.RepartitionStatuts;
+    var topProduits    = (dynamic)ViewBag.TopProduits;
+    var topClients     = (dynamic)ViewBag.TopClients;
+    var courbe         = (dynamic)ViewBag.VentesCourbe;
+    var paiements      = (dynamic)ViewBag.RepartitionPaiement;
+    var villes         = (dynamic)ViewBag.RepartitionVilles;
+    var granularite    = (string)ViewBag.CourbeGranularite;
+    string adminBase = (string)ViewBag.AdminBase;
+
+    string FormatMad(decimal v) => v.ToString("N0", new System.Globalization.CultureInfo("fr-MA")) + " MAD";
+
+    string LibelleStatut(StatutCommande s) => s switch
+    {
+        StatutCommande.EnAttente     => "En attente",
+        StatutCommande.Confirmee     => "Confirmée",
+        StatutCommande.EnPreparation => "En préparation",
+        StatutCommande.Expediee      => "Expédiée",
+        StatutCommande.Livree        => "Livrée",
+        StatutCommande.Annulee       => "Annulée",
+        StatutCommande.Remboursee    => "Remboursée",
+        _ => s.ToString()
+    };
+
+    string CouleurStatut(StatutCommande s) => s switch
+    {
+        StatutCommande.Livree     => "success",
+        StatutCommande.Annulee    => "danger",
+        StatutCommande.Remboursee => "warning",
+        StatutCommande.Expediee   => "info",
+        _ => "secondary"
+    };
+}
+
+<!-- Bandeau header -->
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h4 class="mb-0 fw-bold"><i class="fas fa-tachometer-alt me-2 text-primary"></i>Dashboard Admin</h4>
+            <small class="text-muted">@DateTime.Now.ToString("dddd dd MMMM yyyy", new System.Globalization.CultureInfo("fr-FR"))</small>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid py-4 px-4">
+
+    <!-- Sélecteur de période -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" action="@adminBase" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">
+                        <i class="fas fa-calendar-day text-primary me-1"></i>Date début
+                    </label>
+                    <input type="date" name="debut" class="form-control" value="@dateDebut.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">
+                        <i class="fas fa-calendar-check text-primary me-1"></i>Date fin
+                    </label>
+                    <input type="date" name="fin" class="form-control" value="@dateFin.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-6 d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i>Appliquer
+                    </button>
+                    <a href="@adminBase?debut=@DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd")&fin=@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">7 jours</a>
+                    <a href="@adminBase?debut=@DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd")&fin=@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">30 jours</a>
+                    <a href="@adminBase?debut=@DateTime.UtcNow.AddDays(-90).ToString("yyyy-MM-dd")&fin=@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">90 jours</a>
+                    <a href="@adminBase?debut=@DateTime.UtcNow.AddYears(-1).ToString("yyyy-MM-dd")&fin=@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">1 an</a>
+                    <a href="@adminBase?debut=@DateTime.UtcNow.AddYears(-10).ToString("yyyy-MM-dd")&fin=@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="btn btn-outline-dark">10 ans</a>
+                </div>
+            </form>
+            <small class="text-muted mt-2 d-block">
+                <i class="fas fa-info-circle me-1"></i>
+                Période affichée : <strong>@dateDebut.ToString("dd/MM/yyyy")</strong> → <strong>@dateFin.ToString("dd/MM/yyyy")</strong>
+                (<strong>@((dateFin - dateDebut).Days + 1) jours</strong>) — Granularité courbe : <strong>@granularite</strong>
+            </small>
+        </div>
+    </div>
+
+    <!-- Visiteurs en ligne (temps réel) -->
+    <div class="card border-0 shadow-sm mb-4" id="liveVisitorsCard" style="background: linear-gradient(135deg, #0d6efd, #6610f2); color: #fff; overflow: hidden; position: relative;">
+        <div class="card-body p-4">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width:14px; height:14px; background:#22c55e; border-radius:50%; box-shadow:0 0 18px #22c55e; animation:livePulseAdmin 1.5s ease-in-out infinite;"></div>
+                        <div>
+                            <div class="small opacity-75 text-uppercase fw-bold" style="letter-spacing:.08em;">Visiteurs en ligne</div>
+                            <div class="display-4 fw-bold mb-0" id="adminLiveCount" style="font-family:'Space Grotesk',monospace;">--</div>
+                            <small class="opacity-75">Sessions actives — 5 dernières minutes</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2 text-center border-start border-light border-opacity-25">
+                    <div class="h2 fw-bold mb-0" id="adminConnectes">--</div>
+                    <small class="opacity-75"><i class="fas fa-user-check me-1"></i>Connectés</small>
+                </div>
+                <div class="col-md-2 text-center border-start border-light border-opacity-25">
+                    <div class="h2 fw-bold mb-0" id="adminAnonymes">--</div>
+                    <small class="opacity-75"><i class="fas fa-user-secret me-1"></i>Anonymes</small>
+                </div>
+                <div class="col-md-4 border-start border-light border-opacity-25">
+                    <div class="small opacity-75 mb-2"><i class="fas fa-mobile-alt me-1"></i>Par appareil</div>
+                    <div id="adminRepartition" class="d-flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+            <button onclick="refreshLiveVisitors()" class="btn btn-sm btn-light position-absolute" style="top:12px;right:12px;border-radius:999px;" title="Rafraîchir">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+    <style>
+        @@keyframes livePulseAdmin {
+            0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 18px #22c55e; }
+            50%      { opacity: .6; transform: scale(1.5); box-shadow: 0 0 30px #22c55e; }
+        }
+    </style>
+    <script>
+        async function refreshLiveVisitors() {
+            try {
+                const r = await fetch('/track/visiteurs-en-ligne/detail', { cache: 'no-store' });
+                if (!r.ok) return;
+                const d = await r.json();
+                document.getElementById('adminLiveCount').textContent = d.total;
+                document.getElementById('adminConnectes').textContent = d.connectes;
+                document.getElementById('adminAnonymes').textContent  = d.anonymes;
+
+                const rep = document.getElementById('adminRepartition');
+                rep.innerHTML = '';
+                if (d.repartition && d.repartition.length > 0) {
+                    d.repartition.forEach(r => {
+                        const icons = { 'Mobile': 'mobile-alt', 'Tablette': 'tablet-alt', 'Ordinateur': 'desktop', 'Bot': 'robot', 'Inconnu': 'question-circle' };
+                        const ico = icons[r.Appareil] || 'desktop';
+                        rep.innerHTML += `<span class="badge bg-light text-dark px-3 py-2"><i class="fas fa-${ico} me-1"></i>${r.Appareil}: <strong>${r.Nb}</strong></span>`;
+                    });
+                } else {
+                    rep.innerHTML = '<small class="opacity-75 fst-italic">Aucune donnée</small>';
+                }
+            } catch {}
+        }
+        refreshLiveVisitors();
+        setInterval(refreshLiveVisitors, 30000); // refresh toutes les 30 sec
+    </script>
+
+    <!-- KPIs principaux -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-primary bg-opacity-10 rounded-3 p-3"><i class="fas fa-coins text-primary fa-2x"></i></div>
+                    <div>
+                        <div class="text-muted small">CA Période</div>
+                        <div class="h4 fw-bold mb-0">@FormatMad((decimal)ViewBag.VentesTotal)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-success bg-opacity-10 rounded-3 p-3"><i class="fas fa-shopping-cart text-success fa-2x"></i></div>
+                    <div>
+                        <div class="text-muted small">Commandes</div>
+                        <div class="h4 fw-bold mb-0">@(((int)ViewBag.CommandesTotal).ToString("N0"))</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-info bg-opacity-10 rounded-3 p-3"><i class="fas fa-receipt text-info fa-2x"></i></div>
+                    <div>
+                        <div class="text-muted small">Panier moyen</div>
+                        <div class="h4 fw-bold mb-0">@FormatMad((decimal)ViewBag.PanierMoyen)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-warning bg-opacity-10 rounded-3 p-3"><i class="fas fa-user-plus text-warning fa-2x"></i></div>
+                    <div>
+                        <div class="text-muted small">Nouveaux clients</div>
+                        <div class="h4 fw-bold mb-0">@(((int)ViewBag.NouveauxClients).ToString("N0"))</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Courbe des ventes -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="fw-bold mb-3"><i class="fas fa-chart-line text-primary me-2"></i>Évolution des ventes (par @granularite)</h5>
+            <canvas id="chartVentes" height="80"></canvas>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <!-- Top produits -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-trophy text-warning me-2"></i>Top 5 produits</h5>
+                    @if (((IEnumerable<dynamic>)topProduits).Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light"><tr><th>#</th><th>Produit</th><th class="text-end">Qté</th><th class="text-end">CA</th></tr></thead>
+                                <tbody>
+                                @{ int idx = 1; }
+                                @foreach (var p in topProduits)
+                                {
+                                    <tr>
+                                        <td>@idx</td>
+                                        <td><small class="text-truncate d-inline-block" style="max-width:200px">@p.Nom</small></td>
+                                        <td class="text-end"><span class="badge bg-info">@p.QteVendue</span></td>
+                                        <td class="text-end fw-semibold">@FormatMad((decimal)p.CA)</td>
+                                    </tr>
+                                    idx++;
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else { <p class="text-muted">Aucune vente sur la période.</p> }
+                </div>
+            </div>
+        </div>
+
+        <!-- Top clients -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-crown text-warning me-2"></i>Top 5 clients (CA)</h5>
+                    @if (((IEnumerable<dynamic>)topClients).Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light"><tr><th>#</th><th>Client</th><th class="text-end">Cmd</th><th class="text-end">CA</th></tr></thead>
+                                <tbody>
+                                @{ int j = 1; }
+                                @foreach (var c in topClients)
+                                {
+                                    <tr>
+                                        <td>@j</td>
+                                        <td>
+                                            <div class="small fw-semibold">@c.Nom</div>
+                                            <small class="text-muted">@c.Email</small>
+                                        </td>
+                                        <td class="text-end">@c.NbCmd</td>
+                                        <td class="text-end fw-semibold">@FormatMad((decimal)c.CA)</td>
+                                    </tr>
+                                    j++;
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else { <p class="text-muted">Aucun client actif sur la période.</p> }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <!-- Répartition statuts -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-tag text-secondary me-2"></i>Statuts</h6>
+                    <canvas id="chartStatuts" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Répartition paiement -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-credit-card text-success me-2"></i>Méthodes de paiement</h6>
+                    <canvas id="chartPaiement" height="180"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Top villes -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-map-marker-alt text-danger me-2"></i>Top villes</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        @foreach (var v in villes)
+                        {
+                            <li class="d-flex justify-content-between border-bottom py-1">
+                                <span>@v.Ville</span>
+                                <span class="fw-semibold">@FormatMad((decimal)v.CA)</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accès rapide aux modules admin -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="fw-bold mb-3"><i class="fas fa-th-large text-primary me-2"></i>Accès rapide</h5>
+            <div class="row g-3">
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/produits" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-box fa-2x text-primary mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Produits</h6>
+                            <small class="text-muted">Gérer le catalogue</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/categories" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-tags fa-2x text-warning mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Catégories</h6>
+                            <small class="text-muted">Arborescence SODIV</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/commandes" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-shopping-cart fa-2x text-success mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Commandes</h6>
+                            <small class="text-muted">Suivi des ventes</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/clients" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-2x text-info mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Clients</h6>
+                            <small class="text-muted">Base utilisateurs</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/carte-clients" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-map-marked-alt fa-2x text-danger mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Carte clients</h6>
+                            <small class="text-muted">Répartition géo</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/segmentation" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users-cog fa-2x text-primary mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Segmentation RFM</h6>
+                            <small class="text-muted">11 segments IA</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/comportement" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-route fa-2x text-info mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Tracking</h6>
+                            <small class="text-muted">Entonnoir + analytics</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/previsions-stock" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Prévisions stock</h6>
+                            <small class="text-muted">IA vélocité</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/fraude" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-shield-alt fa-2x text-danger mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Anti-fraude</h6>
+                            <small class="text-muted">Détection IA</small>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="@adminBase/audit" class="card border-0 shadow-sm text-decoration-none h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-history fa-2x text-secondary mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-0">Audit log</h6>
+                            <small class="text-muted">Traçabilité</small>
+                        </div>
+                    </a>
+                </div>
+                @if (ViewBag.EstSuperAdmin == true)
+                {
+                    <div class="col-6 col-md-4 col-xl-3">
+                        <a href="@adminBase/admins" class="card border-0 shadow-sm text-decoration-none h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-user-shield fa-2x text-dark mb-2"></i>
+                                <h6 class="fw-bold text-dark mb-0">Administrateurs</h6>
+                                <small class="text-muted">Gestion comptes</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-3">
+                        <a href="@adminBase/2fa" class="card border-0 shadow-sm text-decoration-none h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-key fa-2x text-warning mb-2"></i>
+                                <h6 class="fw-bold text-dark mb-0">2FA / TOTP</h6>
+                                <small class="text-muted">Sécurité admin</small>
+                            </div>
+                        </a>
+                    </div>
+                }
+                <div class="col-6 col-md-4 col-xl-3">
+                    <a href="http://localhost:3030" target="_blank" class="card border-0 shadow-sm text-decoration-none h-100" style="background:linear-gradient(135deg,#ffc107,#fd7e14);">
+                        <div class="card-body text-center text-white">
+                            <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                            <h6 class="fw-bold mb-0">Metabase BI</h6>
+                            <small class="opacity-75">Analytique externe</small>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dernières commandes -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="fas fa-list text-primary me-2"></i>Dernières commandes</h5>
+                <a href="@adminBase/commandes" class="btn btn-sm btn-outline-primary">Voir tout</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>N°</th><th>Date</th><th>Client</th><th class="text-end">Total</th><th>Statut</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in commandes)
+                        {
+                            <tr>
+                                <td><small class="fw-semibold">@c.NumeroCommande</small></td>
+                                <td><small>@c.DateCommande.ToString("dd/MM/yyyy HH:mm")</small></td>
+                                <td><small>@c.Utilisateur?.Prenom @c.Utilisateur?.Nom</small></td>
+                                <td class="text-end fw-semibold">@FormatMad(c.Total)</td>
+                                <td><span class="badge bg-@CouleurStatut(c.Statut)">@LibelleStatut(c.Statut)</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js (local s'il existe, sinon CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Données passées depuis Razor
+    const courbeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(courbe));
+    const statutsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(statuts));
+    const paiementsData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(paiements));
+
+    const libelleStatut = ['En attente','Confirmée','En préparation','Expédiée','Livrée','Annulée','Remboursée'];
+    const libellePaiement = ['Stripe','CMI','PayPal','Espèces'];
+    const couleurs = ['#0d6efd','#198754','#ffc107','#dc3545','#6c757d','#fd7e14','#6610f2','#20c997'];
+
+    // 1) Courbe des ventes
+    new Chart(document.getElementById('chartVentes'), {
+        type: 'line',
+        data: {
+            labels: courbeData.map(d => d.Label),
+            datasets: [{
+                label: 'CA (MAD)',
+                data: courbeData.map(d => d.Total),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13,110,253,.1)',
+                fill: true,
+                tension: .3,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { callback: v => (v/1000).toFixed(0) + ' k' } }
+            }
+        }
+    });
+
+    // 2) Camembert statuts
+    new Chart(document.getElementById('chartStatuts'), {
+        type: 'doughnut',
+        data: {
+            labels: statutsData.map(s => libelleStatut[s.Statut]),
+            datasets: [{
+                data: statutsData.map(s => s.Nb),
+                backgroundColor: couleurs,
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+    });
+
+    // 3) Camembert paiement
+    new Chart(document.getElementById('chartPaiement'), {
+        type: 'doughnut',
+        data: {
+            labels: paiementsData.map(p => libellePaiement[p.Methode]),
+            datasets: [{
+                data: paiementsData.map(p => p.Nb),
+                backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545'],
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+    });
+</script>

@@ -1,0 +1,246 @@
+@model List<TechVisionMaroc.Models.Categorie>
+@{
+    // Mapping nom catégorie → mot-clé pour photo loremflickr
+    string MotCle(string nom)
+    {
+        var n = (nom ?? "").ToLowerInvariant();
+        if (n.Contains("papier"))      return "paper,office";
+        if (n.Contains("stylo"))       return "pen,writing";
+        if (n.Contains("ordinat") || n.Contains("portable")) return "laptop,computer";
+        if (n.Contains("imprim"))      return "printer";
+        if (n.Contains("smartph") || n.Contains("mobile")) return "smartphone";
+        if (n.Contains("tablette"))    return "tablet";
+        if (n.Contains("téléph") || n.Contains("telep")) return "phone,office";
+        if (n.Contains("bureau") && !n.Contains("accessoire")) return "office,desk";
+        if (n.Contains("fauteuil") || n.Contains("siège")) return "office,chair";
+        if (n.Contains("classeur") || n.Contains("classement")) return "binder,folder";
+        if (n.Contains("agraf"))       return "stapler";
+        if (n.Contains("calcul"))      return "calculator";
+        if (n.Contains("écran") || n.Contains("moniteur")) return "monitor";
+        if (n.Contains("photo") || n.Contains("camera") || n.Contains("caméra")) return "camera";
+        if (n.Contains("scolaire") || n.Contains("école")) return "school,supplies";
+        if (n.Contains("cadeau"))      return "gift,box";
+        if (n.Contains("promo"))       return "sale,discount";
+        if (n.Contains("écriture"))    return "writing,pen";
+        if (n.Contains("petite fourniture") || n.Contains("fourniture")) return "office,supplies";
+        if (n.Contains("présentation") || n.Contains("communication")) return "presentation";
+        if (n.Contains("informatique")) return "computer,tech";
+        if (n.Contains("audio") || n.Contains("vidéo")) return "audio,speaker";
+        if (n.Contains("service")) return "service,office";
+        return "office,product";
+    }
+}
+
+<div class="mega-menu-wrapper" id="megaMenuWrapper" style="display:none">
+    <div class="mega-menu-container">
+
+        <!-- Colonne gauche : catégories parentes -->
+        <div class="mega-menu-left">
+            <div class="mega-menu-header">
+                <i class="fas fa-th-large me-2 text-primary"></i>Toutes les catégories
+            </div>
+            @foreach (var cat in Model)
+            {
+                <a href="/Catalogue?categorieId=@cat.Id"
+                   class="mega-menu-item"
+                   data-cat-id="@cat.Id"
+                   onmouseenter="showPanel(@cat.Id)">
+                    <span class="mega-menu-icon">
+                        <i class="fas @cat.IconeClass"></i>
+                    </span>
+                    <span class="mega-menu-label">@cat.Nom</span>
+                    @if (cat.SousCategories.Any())
+                    {
+                        <span class="mega-menu-arrow"><i class="fas fa-chevron-right"></i></span>
+                    }
+                </a>
+            }
+        </div>
+
+        <!-- Colonne droite : sous-catégories avec photos -->
+        <div class="mega-menu-right" id="megaMenuRight">
+            @foreach (var cat in Model)
+            {
+                if (cat.SousCategories.Any())
+                {
+                    <div class="mega-panel d-none" id="panel-@cat.Id">
+                        <div class="mega-panel-header">
+                            <div>
+                                <h5 class="mega-panel-title">@cat.Nom</h5>
+                           
+                            </div>
+                            <a href="/Catalogue?categorieId=@cat.Id" class="btn btn-sm btn-outline-primary rounded-pill">
+                                Voir tout <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+
+                        <div class="mega-panel-grid-photo">
+                            @foreach (var s in cat.SousCategories.OrderBy(s => s.Nom))
+                            {
+                                // 1) Si une image custom est définie en admin, l'utiliser
+                                // 2) Sinon, fallback sur un SVG avec icône (via endpoint /categorie-image)
+                                var imgUrl = !string.IsNullOrEmpty(s.ImageUrl)
+                                    ? s.ImageUrl
+                                    : $"/categorie-image/{s.Id}";
+                                <a href="/Catalogue?categorieId=@s.Id" class="mega-photo-item">
+                                    <div class="mega-photo-thumb">
+                                        <img src="@imgUrl" alt="@s.Nom" loading="lazy"
+                                             onerror="this.src='/categorie-image/@s.Id'" />
+                                    </div>
+                                    <div class="mega-photo-label">@s.Nom</div>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            <!-- Message par défaut -->
+            <div class="mega-panel-default" id="megaPanelDefault">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-hand-point-left fa-3x mb-3 d-block opacity-25"></i>
+                    <h5 class="text-muted">Survolez une catégorie</h5>
+                    <small>Découvrez nos 1 209 produits classés en 238 catégories</small>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .mega-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border, #e2e8f0);
+        margin-bottom: 1rem;
+    }
+    .mega-panel-title {
+        margin: 0;
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    /* Grid 4 colonnes de photos rondes */
+    .mega-panel-grid-photo {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        padding: 0 1.5rem 1.5rem;
+    }
+    @@media (max-width: 1100px) { .mega-panel-grid-photo { grid-template-columns: repeat(3, 1fr); } }
+
+    .mega-photo-item {
+        text-decoration: none;
+        color: #1f2937;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: .5rem;
+        border-radius: 10px;
+        transition: all .25s cubic-bezier(.4,0,.2,1);
+    }
+    .mega-photo-item:hover {
+        background: #f1f5f9;
+        transform: translateY(-3px);
+        color: var(--primary);
+    }
+    .mega-photo-thumb {
+        width: 100%;
+        aspect-ratio: 1;
+        background: #f8fafc;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: .5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    .mega-photo-thumb::after {
+        content: '';
+        position: absolute; inset: 0;
+        background: linear-gradient(135deg, rgba(13,110,253,0), rgba(13,110,253,.08));
+        opacity: 0;
+        transition: opacity .25s;
+    }
+    .mega-photo-item:hover .mega-photo-thumb::after { opacity: 1; }
+    .mega-photo-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform .35s ease;
+    }
+    .mega-photo-item:hover .mega-photo-thumb img { transform: scale(1.1); }
+    .mega-photo-label {
+        font-size: .82rem;
+        font-weight: 600;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Header gauche personnalisé */
+    .mega-menu-header {
+        padding: 1rem 1.25rem !important;
+        font-weight: 700 !important;
+        font-size: .85rem;
+        color: var(--text, #0f172a);
+        text-transform: none !important;
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+        border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+
+    /* Scrollbar custom pour les panneaux */
+    .mega-menu-right { overflow-y: auto !important; }
+    .mega-menu-right::-webkit-scrollbar { width: 6px; }
+    .mega-menu-right::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+</style>
+
+<script>
+(function () {
+    const trigger = document.querySelector('.mega-menu-trigger');
+    const wrapper = document.getElementById('megaMenuWrapper');
+    if (!trigger || !wrapper) return;
+
+    let timer;
+    function ouvrir()  { clearTimeout(timer); wrapper.style.display = 'flex'; }
+    function fermer()  { timer = setTimeout(() => wrapper.style.display = 'none', 150); }
+
+    trigger.addEventListener('mouseenter', ouvrir);
+    trigger.addEventListener('mouseleave', fermer);
+    wrapper.addEventListener('mouseenter', ouvrir);
+    wrapper.addEventListener('mouseleave', fermer);
+})();
+
+let activePanel = null;
+
+function showPanel(catId) {
+    document.querySelectorAll('.mega-panel').forEach(p => p.classList.add('d-none'));
+    document.getElementById('megaPanelDefault')?.classList.add('d-none');
+    document.querySelectorAll('.mega-menu-item').forEach(i => i.classList.remove('active'));
+    document.querySelector(`.mega-menu-item[data-cat-id="${catId}"]`)?.classList.add('active');
+
+    const panel = document.getElementById('panel-' + catId);
+    if (panel) {
+        panel.classList.remove('d-none');
+        activePanel = catId;
+    } else {
+        document.getElementById('megaPanelDefault')?.classList.remove('d-none');
+    }
+}
+
+document.getElementById('megaMenuWrapper')?.addEventListener('mouseleave', function () {
+    document.querySelectorAll('.mega-panel').forEach(p => p.classList.add('d-none'));
+    document.querySelectorAll('.mega-menu-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('megaPanelDefault')?.classList.remove('d-none');
+    activePanel = null;
+});
+</script>

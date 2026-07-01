@@ -1,0 +1,202 @@
+@model List<TechVisionMaroc.Models.Produit>
+
+@{
+    ViewData["Title"] = "Gestion Produits";
+    int total = ViewBag.Total ?? 0;
+    int page = ViewBag.Page ?? 1;
+    int pages = (int)Math.Ceiling(total / 20.0);
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0 fw-bold"><i class="fas fa-box me-2 text-primary"></i>Gestion des Produits</h4>
+            <a href="@ViewBag.AdminBase/produits/creer" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus me-1"></i>Ajouter un produit
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+
+    @if (ViewBag.StockFaible == true)
+    {
+        <div class="alert alert-warning border-0 shadow-sm d-flex justify-content-between align-items-center mb-3">
+            <span><i class="fas fa-exclamation-triangle me-2"></i><strong>Filtre actif : Stock faible</strong> — produits avec moins de 10 unités, triés du plus faible au plus élevé.</span>
+            <a href="@ViewBag.AdminBase/produits" class="btn btn-sm btn-outline-warning">
+                <i class="fas fa-times me-1"></i>Tout afficher
+            </a>
+        </div>
+    }
+
+    <!-- Barre de recherche -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" action="@ViewBag.AdminBase/produits" class="d-flex gap-2">
+                <input type="text" name="q" class="form-control" placeholder="Rechercher un produit..." value="@Context.Request.Query["q"]" />
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                <a href="@ViewBag.AdminBase/produits" class="btn btn-outline-secondary">Réinitialiser</a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-muted"><strong>@total</strong> produit(s) trouvé(s)</span>
+        @if (pages > 1)
+        {
+            // Pagination compacte : précédent + 1..2 pages autour + suivant
+            int delta = 2;
+            int debut = Math.Max(1, page - delta);
+            int finP  = Math.Min(pages, page + delta);
+            string url(int p) => $"{ViewBag.AdminBase}/produits?page={p}&q={Context.Request.Query["q"]}";
+
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <!-- Précédent -->
+                    <li class="page-item @(page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@(page <= 1 ? "#" : url(page - 1))" aria-label="Précédent">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    <!-- Première page + ellipse -->
+                    @if (debut > 1)
+                    {
+                        <li class="page-item"><a class="page-link" href="@url(1)">1</a></li>
+                        if (debut > 2)
+                        {
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        }
+                    }
+
+                    <!-- Pages autour de la courante -->
+                    @for (int i = debut; i <= finP; i++)
+                    {
+                        <li class="page-item @(i == page ? "active" : "")">
+                            <a class="page-link" href="@url(i)">@i</a>
+                        </li>
+                    }
+
+                    <!-- Ellipse + dernière page -->
+                    @if (finP < pages)
+                    {
+                        if (finP < pages - 1)
+                        {
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        }
+                        <li class="page-item"><a class="page-link" href="@url(pages)">@pages</a></li>
+                    }
+
+                    <!-- Suivant -->
+                    <li class="page-item @(page >= pages ? "disabled" : "")">
+                        <a class="page-link" href="@(page >= pages ? "#" : url(page + 1))" aria-label="Suivant">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Produit</th>
+                        <th>Catégorie</th>
+                        <th>Prix</th>
+                        <th>Stock</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        <tr>
+                            <td class="text-muted small">#@p.Id</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="@(string.IsNullOrEmpty(p.ImageUrl) ? "/images/placeholder.svg" : p.ImageUrl)"
+                                         style="width:40px;height:40px;object-fit:cover;" class="rounded" alt="@p.Nom" />
+                                    <div>
+                                        <div class="fw-semibold small">@p.Nom</div>
+                                        <div class="text-muted" style="font-size:.75rem">@p.Marque · @p.Reference</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-secondary">@(p.Categorie?.Nom ?? "-")</span></td>
+                            <td>
+                                @if (p.PrixPromo.HasValue)
+                                {
+                                    <div class="fw-bold text-primary">@p.PrixPromo.Value.ToString("N2") MAD</div>
+                                    <div class="text-muted text-decoration-line-through small">@p.Prix.ToString("N2") MAD</div>
+                                }
+                                else
+                                {
+                                    <span class="fw-bold">@p.Prix.ToString("N2") MAD</span>
+                                }
+                            </td>
+                            <td>
+                                @if (p.Stock == 0)
+                                {
+                                    <span class="badge bg-danger">Rupture</span>
+                                }
+                                else if (p.Stock < 10)
+                                {
+                                    <span class="badge bg-warning text-dark">@p.Stock</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">@p.Stock</span>
+                                }
+                            </td>
+                            <td>
+                                @if (p.EstActif)
+                                {
+                                    <span class="badge bg-success">Actif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactif</span>
+                                }
+                                @if (p.EstVedette)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1"><i class="fas fa-star"></i></span>
+                                }
+                            </td>
+                            <td>
+                                <a href="/Produit/Details/@p.Id" target="_blank" class="btn btn-outline-secondary btn-sm" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="@ViewBag.AdminBase/produits/modifier/@p.Id" class="btn btn-outline-primary btn-sm" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                @if (ViewBag.EstSuperAdmin == true)
+                                {
+                                    <form method="post" action="@ViewBag.AdminBase/produits/supprimer/@p.Id" class="d-inline"
+                                          onsubmit="return confirm('Supprimer « @p.Nom » ? Cette action est irréversible.')">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Aucun produit trouvé.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

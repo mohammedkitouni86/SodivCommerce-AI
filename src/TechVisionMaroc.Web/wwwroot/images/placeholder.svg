@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <rect width="300" height="300" fill="#f0f4ff"/>
+  <rect x="80" y="70" width="140" height="110" rx="8" fill="#d0deff"/>
+  <rect x="100" y="190" width="100" height="12" rx="6" fill="#aac0ff"/>
+  <rect x="115" y="212" width="70" height="8" rx="4" fill="#c5d4ff"/>
+  <text x="150" y="145" font-family="Arial" font-size="40" fill="#6699ff" text-anchor="middle">📦</text>
+</svg>

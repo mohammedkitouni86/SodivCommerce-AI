@@ -1,0 +1,95 @@
+@model List<TechVisionMaroc.Models.Utilisateur>
+
+@{
+    ViewData["Title"] = "Gestion des Admins";
+}
+
+<div class="bg-dark text-white py-3 border-bottom">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4 class="mb-0 fw-bold"><i class="fas fa-user-shield me-2 text-warning"></i>Gestion des Administrateurs</h4>
+            <a href="@ViewBag.AdminBase/admins/creer" class="btn btn-warning btn-sm">
+                <i class="fas fa-user-plus me-1"></i>Ajouter un admin
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+    <div class="alert alert-warning border-0 shadow-sm mb-4">
+        <i class="fas fa-crown me-2"></i>
+        <strong>Super Admin uniquement</strong> — Vous pouvez bloquer ou supprimer des administrateurs. Un admin bloqué ne peut plus se connecter au panneau.
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Statut</th>
+                        <th>Inscrit le</th>
+                        <th>Dernière connexion</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model)
+                    {
+                        <tr>
+                            <td class="text-muted small">#@a.Id</td>
+                            <td class="fw-semibold">
+                                <i class="fas fa-user-tie me-2 text-warning"></i>@a.Prenom @a.Nom
+                            </td>
+                            <td>@a.Email</td>
+                            <td>
+                                @if (a.EstActif)
+                                {
+                                    <span class="badge bg-success">Actif</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Bloqué</span>
+                                }
+                            </td>
+                            <td class="text-muted small">@a.DateInscription.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                            <td class="text-muted small">
+                                @(a.DerniereConnexion.HasValue
+                                    ? a.DerniereConnexion.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    : "Jamais")
+                            </td>
+                            <td>
+                                <a href="@ViewBag.AdminBase/admins/modifier/@a.Id" class="btn btn-sm btn-outline-primary me-1" title="Modifier">
+                                    <i class="fas fa-edit"></i> Modifier
+                                </a>
+                                <form method="post" action="@ViewBag.AdminBase/admins/bloquer/@a.Id" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm @(a.EstActif ? "btn-outline-warning" : "btn-outline-success")"
+                                            title="@(a.EstActif ? "Bloquer" : "Débloquer")">
+                                        <i class="fas @(a.EstActif ? "fa-ban" : "fa-check-circle")"></i>
+                                        @(a.EstActif ? "Bloquer" : "Débloquer")
+                                    </button>
+                                </form>
+                                <form method="post" action="@ViewBag.AdminBase/admins/supprimer/@a.Id" class="d-inline"
+                                      onsubmit="return confirm('Supprimer définitivement cet administrateur ?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Aucun administrateur trouvé.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
